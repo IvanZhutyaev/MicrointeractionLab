@@ -3,7 +3,7 @@ import { useAnimationStore } from "./store/useAnimationStore";
 import { ControlsPanel } from "./components/Controls/ControlsPanel";
 import { PreviewArea } from "./components/Preview/PreviewArea";
 import { CodePanel } from "./components/CodePanel/CodePanel";
-import { Gallery } from "./components/Gallery/Gallery";
+import { GalleryModal } from "./components/Gallery/GalleryModal";
 
 export default function App() {
   const theme = useAnimationStore((s) => s.theme);
@@ -51,27 +51,21 @@ export default function App() {
         </div>
       </header>
 
-      <main className="h-[calc(100vh-120px)]">
-        <div className="grid h-full grid-cols-12 gap-4">
-          <aside className="col-span-12 lg:col-span-3">
-            <div className="h-full">
-              <ControlsPanel />
-            </div>
+      <main className="flex min-h-[calc(100vh-90px)] flex-col gap-4 lg:min-h-[calc(100vh-120px)]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <aside className="lg:col-span-3">
+            <ControlsPanel />
           </aside>
-          <section className="col-span-12 lg:col-span-6">
-            <div className="h-full">
-              <PreviewArea />
-            </div>
+          <section className="lg:col-span-6">
+            <PreviewArea />
           </section>
-          <aside className="col-span-12 lg:col-span-3">
-            <div className="h-full">
-              <CodePanel />
-            </div>
+          <aside className="lg:col-span-3">
+            <CodePanel />
           </aside>
         </div>
-
-        {showGallery ? <Gallery /> : null}
       </main>
+
+      {showGallery ? <GalleryModal onClose={() => setShowGallery(false)} /> : null}
     </div>
   );
 }

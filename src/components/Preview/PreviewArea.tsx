@@ -19,18 +19,31 @@ export function PreviewArea() {
   useEffect(() => {
     if (animationA.trigger !== "auto") return;
     if (autoModeA !== "auto") return;
-    // auto motion is base -> target -> base, so after duration+delay it should look like "idle"
-    const ms = animationA.duration + animationA.delay + 50;
-    const t = window.setTimeout(() => setAutoModeA("idle"), ms);
-    return () => window.clearTimeout(t);
+    // For clarity: during `auto` we first show the peak ("active"), then settle back to "idle".
+    // mapConfigToMotionProps uses times: [0, 0.55, 1], so active is around 55% of the timeline.
+    const tActive = window.setTimeout(
+      () => setAutoModeA("active"),
+      animationA.delay + animationA.duration * 0.55 + 20,
+    );
+    const tIdle = window.setTimeout(() => setAutoModeA("idle"), animationA.delay + animationA.duration + 40);
+    return () => {
+      window.clearTimeout(tActive);
+      window.clearTimeout(tIdle);
+    };
   }, [animationA.trigger, animationA.duration, animationA.delay, autoModeA]);
 
   useEffect(() => {
     if (animationB.trigger !== "auto") return;
     if (autoModeB !== "auto") return;
-    const ms = animationB.duration + animationB.delay + 50;
-    const t = window.setTimeout(() => setAutoModeB("idle"), ms);
-    return () => window.clearTimeout(t);
+    const tActive = window.setTimeout(
+      () => setAutoModeB("active"),
+      animationB.delay + animationB.duration * 0.55 + 20,
+    );
+    const tIdle = window.setTimeout(() => setAutoModeB("idle"), animationB.delay + animationB.duration + 40);
+    return () => {
+      window.clearTimeout(tActive);
+      window.clearTimeout(tIdle);
+    };
   }, [animationB.trigger, animationB.duration, animationB.delay, autoModeB]);
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import type { AnimationConfig, CompareTarget, EasingConfig } from "../types/anim
 import { getPresetById } from "../features/presets/presets";
 import type { PresetId } from "../features/presets/types";
 import type { UIComponentType } from "../types/ui";
+import type { CustomGalleryItem } from "../types/gallery";
 
 export type CodeLanguage = "framer-motion" | "css";
 export type ThemeMode = "dark" | "light";
@@ -38,6 +39,11 @@ type State = {
   // Controls UX
   activePresetIdA: PresetId | "custom";
   activePresetIdB: PresetId | "custom";
+  activeGalleryKeyA: string; // e.g. preset:soft-hover | custom:<id> | none
+  activeGalleryKeyB: string;
+
+  // Gallery storage
+  customGallery: CustomGalleryItem[];
 
   // Actions
   setEditTarget: (target: CompareTarget) => void;
@@ -49,6 +55,11 @@ type State = {
   setConfig: (target: CompareTarget, patch: Partial<AnimationConfig>) => void;
   applyPreset: (target: CompareTarget, presetId: PresetId) => void;
   resetTarget: (target: CompareTarget) => void;
+
+  // Custom gallery actions
+  saveCurrentToCustomGallery: (name: string, target: CompareTarget, config: AnimationConfig) => void;
+  loadCustomToTarget: (id: string, target: CompareTarget) => void;
+  deleteCustomGalleryItem: (id: string, target: CompareTarget) => void;
 };
 
 function getTargetConfig(state: State, target: CompareTarget) {
@@ -67,6 +78,9 @@ export const useAnimationStore = create<State>()(
       componentType: "button",
       activePresetIdA: "custom",
       activePresetIdB: "custom",
+      activeGalleryKeyA: "none",
+      activeGalleryKeyB: "none",
+      customGallery: [],
 
       setEditTarget: (target) => set({ editTarget: target }),
       setCompareMode: (enabled) => set({ compareMode: enabled }),
@@ -78,9 +92,9 @@ export const useAnimationStore = create<State>()(
         const update = (cfg: AnimationConfig) => ({ ...cfg, ...patch });
         const nextActivePresetId: PresetId | "custom" = "custom";
         if (target === "A") {
-          set({ animationA: update(get().animationA), activePresetIdA: nextActivePresetId });
+          set({ animationA: update(get().animationA), activePresetIdA: nextActivePresetId, activeGalleryKeyA: "none" });
         } else {
-          set({ animationB: update(get().animationB), activePresetIdB: nextActivePresetId });
+          set({ animationB: update(get().animationB), activePresetIdB: nextActivePresetId, activeGalleryKeyB: "none" });
         }
       },
 
@@ -88,18 +102,58 @@ export const useAnimationStore = create<State>()(
         const preset = getPresetById(presetId);
         if (!preset) return;
         if (target === "A") {
-          set({ animationA: preset.config, activePresetIdA: presetId });
+          set({ animationA: preset.config, activePresetIdA: presetId, activeGalleryKeyA: `preset:${presetId}` });
         } else {
-          set({ animationB: preset.config, activePresetIdB: presetId });
+          set({ animationB: preset.config, activePresetIdB: presetId, activeGalleryKeyB: `preset:${presetId}` });
         }
       },
 
       resetTarget: (target) => {
         if (target === "A") {
-          set({ animationA: DEFAULT_CONFIG, activePresetIdA: "custom" });
+          set({ animationA: DEFAULT_CONFIG, activePresetIdA: "custom", activeGalleryKeyA: "none" });
         } else {
-          set({ animationB: DEFAULT_CONFIG, activePresetIdB: "custom" });
+          set({ animationB: DEFAULT_CONFIG, activePresetIdB: "custom", activeGalleryKeyB: "none" });
         }
+      },
+
+      saveCurrentToCustomGallery: (name, target, config) => {
+        const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const item: CustomGalleryItem = {
+          id,
+          name,
+          createdAt: Date.now(),
+          componentType: get().componentType,
+          config,
+        };
+        set((s) => {
+          const next = [...s.customGallery, item];
+          if (target === "A") {
+            return { customGallery: next, activePresetIdA: "custom", activeGalleryKeyA: `custom:${id}` };
+          }
+          return { customGallery: next, activePresetIdB: "custom", activeGalleryKeyB: `custom:${id}` };
+        });
+      },
+
+      loadCustomToTarget: (id, target) => {
+        const item = get().customGallery.find((x) => x.id === id);
+        if (!item) return;
+        if (target === "A") {
+          set({ animationA: item.config, activePresetIdA: "custom", activeGalleryKeyA: `custom:${id}`, componentType: item.componentType });
+        } else {
+          set({ animationB: item.config, activePresetIdB: "custom", activeGalleryKeyB: `custom:${id}`, componentType: item.componentType });
+        }
+      },
+
+      deleteCustomGalleryItem: (id, target) => {
+        set((s) => {
+          const next = s.customGallery.filter((x) => x.id !== id);
+          if (target === "A") {
+            const nextKey = s.activeGalleryKeyA === `custom:${id}` ? "none" : s.activeGalleryKeyA;
+            return { customGallery: next, activeGalleryKeyA: nextKey };
+          }
+          const nextKey = s.activeGalleryKeyB === `custom:${id}` ? "none" : s.activeGalleryKeyB;
+          return { customGallery: next, activeGalleryKeyB: nextKey };
+        });
       },
     }),
     {

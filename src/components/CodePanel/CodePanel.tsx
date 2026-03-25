@@ -4,6 +4,15 @@ import type { CompareTarget } from "../../types/animation";
 import { generateFramerMotionCode } from "../../utils/codegen/generateFramerMotionCode";
 import { generateCssCode } from "../../utils/codegen/generateCssCode";
 import { copyTextToClipboard } from "../../utils/clipboard";
+import pkg from "../../../package.json";
+
+function parseGithubSlug(repoUrl: string | undefined): { owner: string; repo: string } | null {
+  if (!repoUrl) return null;
+  // Expected: git+https://github.com/Owner/Repo.git or https://github.com/Owner/Repo
+  const m = repoUrl.match(/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/);
+  if (!m) return null;
+  return { owner: m[1], repo: m[2] };
+}
 
 export function CodePanel() {
   const compareMode = useAnimationStore((s) => s.compareMode);
@@ -58,6 +67,51 @@ export function CodePanel() {
           className="mt-3 w-full rounded-xl bg-indigo-500/20 px-3 py-2 text-sm font-semibold text-indigo-200 ring-1 ring-indigo-400 hover:bg-indigo-500/25"
         >
           Copy Code
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            const slug = parseGithubSlug((pkg as any)?.repository?.url);
+            if (!slug) {
+              setToast("GitHub repo not found");
+              window.setTimeout(() => setToast(null), 1600);
+              return;
+            }
+
+            const targetLabel = compareMode ? `Editing ${target}` : "Live generation";
+            const trigger = config.trigger;
+            const easingLabel =
+              config.easing.kind === "preset" ? config.easing.preset : `cubic-bezier(${config.easing.x1},${config.easing.y1},${config.easing.x2},${config.easing.y2})`;
+
+            const body = [
+              `Microinteraction Lab - generated snippet`,
+              ``,
+              `Component: ${componentType}`,
+              `Trigger: ${trigger}`,
+              `Timing: duration=${Math.round(config.duration)}ms, delay=${Math.round(config.delay)}ms`,
+              `Easing: ${easingLabel}`,
+              `Transform: scale=${config.scale}, translateX=${Math.round(config.translateX)}px, translateY=${Math.round(config.translateY)}px, rotate=${Math.round(
+                config.rotate,
+              )}deg`,
+              `Opacity: ${config.opacity}, Shadow: ${config.shadow}`,
+              ``,
+              `Generated code (${codeLanguage}):`,
+              "```tsx",
+              code.slice(0, 6000),
+              "```",
+            ].join("\n");
+
+            const title = `Microinteraction (${componentType}, ${trigger}, ${Math.round(config.duration)}ms)`;
+            const url = `https://github.com/${slug.owner}/${slug.repo}/issues/new?title=${encodeURIComponent(
+              title,
+            )}&body=${encodeURIComponent(body)}&labels=enhancement`;
+
+            window.open(url, "_blank", "noopener,noreferrer");
+          }}
+          className="mt-2 w-full rounded-xl bg-zinc-900/40 px-3 py-2 text-sm font-semibold text-zinc-200 ring-1 ring-zinc-800 hover:bg-zinc-900/60"
+        >
+          Share on GitHub (Issue)
         </button>
 
         {toast ? (
