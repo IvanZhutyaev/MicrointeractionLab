@@ -15,8 +15,11 @@ export function Gallery() {
   const editTarget = useAnimationStore((s) => s.editTarget);
   const applyPreset = useAnimationStore((s) => s.applyPreset);
   const componentType = useAnimationStore((s) => s.componentType);
+  const activePresetIdA = useAnimationStore((s) => s.activePresetIdA);
+  const activePresetIdB = useAnimationStore((s) => s.activePresetIdB);
 
   const target = (compareMode ? editTarget : "A") as "A" | "B";
+  const activePresetId = target === "A" ? activePresetIdA : activePresetIdB;
 
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | Trigger>("all");
@@ -90,7 +93,11 @@ export function Gallery() {
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") applyPreset(target, p.id as any);
             }}
-            className="group cursor-pointer rounded-2xl bg-zinc-950/30 p-3 text-left ring-1 ring-zinc-800 hover:bg-zinc-950/45"
+            className={
+              p.id === activePresetId
+                ? "group cursor-pointer rounded-2xl bg-indigo-500/10 p-3 text-left ring-1 ring-indigo-400/80 hover:bg-indigo-500/15"
+                : "group cursor-pointer rounded-2xl bg-zinc-950/30 p-3 text-left ring-1 ring-zinc-800 hover:bg-zinc-950/45"
+            }
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -106,6 +113,10 @@ export function Gallery() {
             <div className="mt-3">
               <AnimatedElement config={p.config} compact componentType={componentType} active={false} />
             </div>
+
+            {p.id === activePresetId ? (
+              <div className="mt-2 text-[11px] font-semibold text-indigo-200">Selected</div>
+            ) : null}
           </div>
         ))}
       </div>

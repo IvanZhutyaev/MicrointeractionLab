@@ -211,7 +211,7 @@ export function ControlsPanel() {
 
         {config.trigger === "auto" ? (
           <div className="mt-3 text-[11px] text-zinc-500">
-            Auto/Load проигрывается при маунте превью. Если не видно — нажми `Replay`.
+            Auto/Load стартует при маунте; для наглядности переключи `Idle/Active` в превью.
           </div>
         ) : null}
       </Section>

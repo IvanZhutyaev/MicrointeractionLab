@@ -10,6 +10,7 @@ type Props = {
   compact?: boolean;
   active?: boolean;
   replayKey?: number;
+  autoPreviewMode?: "auto" | "idle" | "active";
 };
 
 function buildAutoKey(config: AnimationConfig, componentType: UIComponentType, replayKey?: number) {
@@ -21,7 +22,14 @@ function buildAutoKey(config: AnimationConfig, componentType: UIComponentType, r
   return `auto-${componentType}-${replayKey ?? 0}-${config.duration}-${config.delay}-${config.scale}-${config.translateX}-${config.translateY}-${config.rotate}-${config.opacity}-${config.shadow}-${easingKey}`;
 }
 
-export function AnimatedElement({ config, componentType, compact, active, replayKey }: Props) {
+export function AnimatedElement({
+  config,
+  componentType,
+  compact,
+  active,
+  replayKey,
+  autoPreviewMode = "auto",
+}: Props) {
   const reducedMotion = useReducedMotion();
 
   const baseStyle: CSSProperties = {
@@ -34,7 +42,32 @@ export function AnimatedElement({ config, componentType, compact, active, replay
 
   const ease = easingToFramerEase(config.easing);
 
-  if (reducedMotion) {
+  if (config.trigger === "auto" && (autoPreviewMode === "idle" || autoPreviewMode === "active")) {
+    const shadow0 = shadowToCss(0);
+    const shadow1 = shadowToCss(config.shadow);
+
+    const idleState = {
+      scale: 1,
+      opacity: 1,
+      x: 0,
+      y: 0,
+      rotate: 0,
+      boxShadow: shadow0,
+    };
+
+    const activeState = {
+      scale: config.scale,
+      opacity: config.opacity,
+      x: config.translateX,
+      y: config.translateY,
+      rotate: config.rotate,
+      boxShadow: shadow1,
+    };
+
+    motionProps.initial = idleState;
+    motionProps.animate = autoPreviewMode === "idle" ? idleState : activeState;
+    motionProps.transition = { duration: 0, delay: 0, ease };
+  } else if (reducedMotion) {
     // Important: for `auto` we animate from base -> target -> base.
     // If we just set duration=0, it will snap to the last keyframe ("base") and look like nothing happened.
     // So in reduced-motion mode we jump directly to the "target" state.
@@ -42,7 +75,7 @@ export function AnimatedElement({ config, componentType, compact, active, replay
       const shadow0 = shadowToCss(0);
       const shadow1 = shadowToCss(config.shadow);
 
-      // Framer Motion supports animating these props even without transitions.
+      // In reduced-motion mode we treat "auto" as "active" for visibility.
       motionProps.initial = { scale: 1, opacity: 1, x: 0, y: 0, rotate: 0, boxShadow: shadow0 };
       motionProps.animate = {
         scale: config.scale,
