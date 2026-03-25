@@ -7,10 +7,21 @@ type Props = {
   config: AnimationConfig;
   compact?: boolean;
   active?: boolean;
+  replayKey?: number;
 };
 
-export function AnimatedButton({ config, compact, active }: Props) {
+export function AnimatedButton({ config, compact, active, replayKey }: Props) {
   const reducedMotion = useReducedMotion();
+
+  const easingKey =
+    config.easing.kind === "preset"
+      ? config.easing.preset
+      : `${config.easing.x1.toFixed(2)},${config.easing.y1.toFixed(2)},${config.easing.x2.toFixed(2)},${config.easing.y2.toFixed(2)}`;
+
+  const autoMotionKey =
+    config.trigger === "auto"
+      ? `auto-${replayKey ?? 0}-${config.duration}-${config.delay}-${config.scale}-${config.translateX}-${config.translateY}-${config.rotate}-${config.opacity}-${config.shadow}-${easingKey}`
+      : undefined;
 
   const baseStyle: CSSProperties = {
     boxShadow: shadowToCss(0),
@@ -37,6 +48,7 @@ export function AnimatedButton({ config, compact, active }: Props) {
 
   return (
     <motion.button
+      key={autoMotionKey}
       type="button"
       className={baseButtonClass}
       style={baseStyle}
