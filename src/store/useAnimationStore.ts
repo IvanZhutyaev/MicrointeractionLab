@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { AnimationConfig, CompareTarget, EasingConfig } from "../types/animation";
 import { getPresetById } from "../features/presets/presets";
 import type { PresetId } from "../features/presets/types";
+import type { UIComponentType } from "../types/ui";
 
 export type CodeLanguage = "framer-motion" | "css";
 export type ThemeMode = "dark" | "light";
@@ -32,6 +33,7 @@ type State = {
   // UX
   codeLanguage: CodeLanguage;
   theme: ThemeMode;
+  componentType: UIComponentType;
 
   // Controls UX
   activePresetIdA: PresetId | "custom";
@@ -42,6 +44,7 @@ type State = {
   setCompareMode: (enabled: boolean) => void;
   setCodeLanguage: (lang: CodeLanguage) => void;
   setTheme: (theme: ThemeMode) => void;
+  setComponentType: (type: UIComponentType) => void;
 
   setConfig: (target: CompareTarget, patch: Partial<AnimationConfig>) => void;
   applyPreset: (target: CompareTarget, presetId: PresetId) => void;
@@ -61,6 +64,7 @@ export const useAnimationStore = create<State>()(
       animationB: { ...DEFAULT_CONFIG, scale: 0.98, rotate: -3, opacity: 0.9, shadow: 0.5 },
       codeLanguage: "framer-motion",
       theme: "dark",
+      componentType: "button",
       activePresetIdA: "custom",
       activePresetIdB: "custom",
 
@@ -68,6 +72,7 @@ export const useAnimationStore = create<State>()(
       setCompareMode: (enabled) => set({ compareMode: enabled }),
       setCodeLanguage: (lang) => set({ codeLanguage: lang }),
       setTheme: (theme) => set({ theme }),
+      setComponentType: (type) => set({ componentType: type }),
 
       setConfig: (target, patch) => {
         const update = (cfg: AnimationConfig) => ({ ...cfg, ...patch });

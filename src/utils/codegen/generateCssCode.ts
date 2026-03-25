@@ -27,7 +27,7 @@ function transformCss(config: AnimationConfig) {
   )}deg) scale(${config.scale})`;
 }
 
-export function generateCssCode(config: AnimationConfig): string {
+export function generateCssCode(config: AnimationConfig, _componentType: "button" | "card" | "input" = "button"): string {
   const easeCss = easingToCss(config.easing);
   const durationMs = ms(config.duration);
   const delayMs = ms(config.delay);
@@ -39,7 +39,7 @@ export function generateCssCode(config: AnimationConfig): string {
   const baseTransform = `translate(0px, 0px) rotate(0deg) scale(1)`;
 
   if (config.trigger === "hover") {
-    return `.button {
+    return `.microinteraction {
   transition:
     transform ${durationMs}ms ${easeCss} ${delayMs}ms,
     opacity ${durationMs}ms ${easeCss} ${delayMs}ms,
@@ -48,7 +48,7 @@ export function generateCssCode(config: AnimationConfig): string {
   box-shadow: ${shadow0};
 }
 
-.button:hover, .button:focus-visible {
+.microinteraction:hover, .microinteraction:focus-visible {
   transform: ${targetTransform};
   opacity: ${config.opacity};
   box-shadow: ${shadow1};
@@ -56,7 +56,7 @@ export function generateCssCode(config: AnimationConfig): string {
   }
 
   if (config.trigger === "click") {
-    return `.button {
+    return `.microinteraction {
   transition:
     transform ${durationMs}ms ${easeCss} ${delayMs}ms,
     opacity ${durationMs}ms ${easeCss} ${delayMs}ms,
@@ -65,7 +65,7 @@ export function generateCssCode(config: AnimationConfig): string {
   box-shadow: ${shadow0};
 }
 
-.button:active {
+.microinteraction:active {
   transform: ${targetTransform};
   opacity: ${config.opacity};
   box-shadow: ${shadow1};
@@ -86,7 +86,7 @@ export function generateCssCode(config: AnimationConfig): string {
   }
 }
 
-.button {
+.microinteraction {
   animation: microinteractionAuto ${durationMs}ms ${easeCss} ${delayMs}ms 1 both;
 }`;
 }

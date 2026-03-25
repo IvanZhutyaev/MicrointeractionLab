@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AnimatedButton } from "../Preview/AnimatedButton";
+import { AnimatedElement } from "../Preview/AnimatedElement";
 import { PRESETS } from "../../features/presets/presets";
 import type { Trigger } from "../../types/animation";
 import { useAnimationStore } from "../../store/useAnimationStore";
@@ -14,6 +14,7 @@ export function Gallery() {
   const compareMode = useAnimationStore((s) => s.compareMode);
   const editTarget = useAnimationStore((s) => s.editTarget);
   const applyPreset = useAnimationStore((s) => s.applyPreset);
+  const componentType = useAnimationStore((s) => s.componentType);
 
   const target = (compareMode ? editTarget : "A") as "A" | "B";
 
@@ -103,7 +104,7 @@ export function Gallery() {
             </div>
 
             <div className="mt-3">
-              <AnimatedButton config={p.config} compact active={false} />
+              <AnimatedElement config={p.config} compact componentType={componentType} active={false} />
             </div>
           </div>
         ))}

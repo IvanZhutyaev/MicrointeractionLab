@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import type { EasingPreset } from "../../types/animation";
 import type { EasingConfig, AnimationConfig, CompareTarget, Trigger } from "../../types/animation";
 import { useAnimationStore } from "../../store/useAnimationStore";
+import type { UIComponentType } from "../../types/ui";
+import { EasingBezierGraph } from "./EasingBezierGraph";
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -76,6 +78,8 @@ export function ControlsPanel() {
   const setConfig = useAnimationStore((s) => s.setConfig);
   const applyPreset = useAnimationStore((s) => s.applyPreset);
   const resetTarget = useAnimationStore((s) => s.resetTarget);
+  const componentType = useAnimationStore((s) => s.componentType);
+  const setComponentType = useAnimationStore((s) => s.setComponentType);
 
   const target: CompareTarget = compareMode ? editTarget : "A";
   const config: AnimationConfig = target === "A" ? animationA : animationB;
@@ -154,6 +158,20 @@ export function ControlsPanel() {
         </div>
       </Section>
 
+      <Section title="Component">
+        <div className="flex items-center gap-2">
+          <select
+            className="w-full rounded-lg bg-zinc-900/50 px-3 py-2 text-sm text-zinc-100 ring-1 ring-zinc-800"
+            value={componentType}
+            onChange={(e) => setComponentType(e.target.value as UIComponentType)}
+          >
+            <option value="button">Button</option>
+            <option value="card">Card</option>
+            <option value="input">Input</option>
+          </select>
+        </div>
+      </Section>
+
       <Section title="Trigger">
         <div className="space-y-2">
           <label className="flex items-center justify-between gap-3 rounded-lg bg-zinc-900/30 px-3 py-2">
@@ -190,6 +208,12 @@ export function ControlsPanel() {
             </div>
           </label>
         </div>
+
+        {config.trigger === "auto" ? (
+          <div className="mt-3 text-[11px] text-zinc-500">
+            Auto/Load проигрывается при маунте превью. Если не видно — нажми `Replay`.
+          </div>
+        ) : null}
       </Section>
 
       <Section title="Presets">
@@ -338,6 +362,24 @@ export function ControlsPanel() {
                   }
                 />
               </Field>
+            </div>
+
+            <div className="mt-3">
+              <EasingBezierGraph
+                x1={cubicEasing!.x1}
+                y1={cubicEasing!.y1}
+                x2={cubicEasing!.x2}
+                y2={cubicEasing!.y2}
+                onChange={({ x1: nx1, y1: ny1, x2: nx2, y2: ny2 }) => {
+                  setEasing({
+                    kind: "cubicBezier",
+                    x1: nx1,
+                    y1: ny1,
+                    x2: nx2,
+                    y2: ny2,
+                  });
+                }}
+              />
             </div>
           </>
         )}

@@ -12,14 +12,15 @@ export function CodePanel() {
   const animationB = useAnimationStore((s) => s.animationB);
   const codeLanguage = useAnimationStore((s) => s.codeLanguage);
   const setCodeLanguage = useAnimationStore((s) => s.setCodeLanguage);
+  const componentType = useAnimationStore((s) => s.componentType);
 
   const target: CompareTarget = compareMode ? editTarget : "A";
   const config = target === "A" ? animationA : animationB;
 
   const code = useMemo(() => {
-    if (codeLanguage === "css") return generateCssCode(config);
-    return generateFramerMotionCode(config);
-  }, [codeLanguage, config]);
+    if (codeLanguage === "css") return generateCssCode(config, componentType);
+    return generateFramerMotionCode(config, componentType);
+  }, [codeLanguage, config, componentType]);
 
   const [toast, setToast] = useState<string | null>(null);
 

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useAnimationStore } from "../../store/useAnimationStore";
-import { AnimatedButton } from "./AnimatedButton";
+import { AnimatedElement } from "./AnimatedElement";
 
 export function PreviewArea() {
   const compareMode = useAnimationStore((s) => s.compareMode);
   const editTarget = useAnimationStore((s) => s.editTarget);
   const animationA = useAnimationStore((s) => s.animationA);
   const animationB = useAnimationStore((s) => s.animationB);
+  const componentType = useAnimationStore((s) => s.componentType);
 
   const [replayA, setReplayA] = useState(0);
   const [replayB, setReplayB] = useState(0);
@@ -15,7 +16,12 @@ export function PreviewArea() {
     <div className="h-full w-full rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6">
       {!compareMode ? (
         <div className="flex h-full flex-col items-center justify-center gap-3">
-          <AnimatedButton config={animationA} active={editTarget === "A"} replayKey={replayA} />
+          <AnimatedElement
+            config={animationA}
+            componentType={componentType}
+            active={editTarget === "A"}
+            replayKey={replayA}
+          />
           {animationA.trigger === "auto" ? (
             <button
               type="button"
@@ -31,7 +37,12 @@ export function PreviewArea() {
           <div className="flex-1">
             <div className="mb-3 text-xs text-zinc-400">Animation A</div>
             <div className="flex flex-col items-center gap-3">
-              <AnimatedButton config={animationA} active={editTarget === "A"} replayKey={replayA} />
+              <AnimatedElement
+                config={animationA}
+                componentType={componentType}
+                active={editTarget === "A"}
+                replayKey={replayA}
+              />
               {animationA.trigger === "auto" ? (
                 <button
                   type="button"
@@ -46,7 +57,12 @@ export function PreviewArea() {
           <div className="flex-1">
             <div className="mb-3 text-xs text-zinc-400">Animation B</div>
             <div className="flex flex-col items-center gap-3">
-              <AnimatedButton config={animationB} active={editTarget === "B"} replayKey={replayB} />
+              <AnimatedElement
+                config={animationB}
+                componentType={componentType}
+                active={editTarget === "B"}
+                replayKey={replayB}
+              />
               {animationB.trigger === "auto" ? (
                 <button
                   type="button"
