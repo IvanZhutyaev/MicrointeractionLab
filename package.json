@@ -1,0 +1,38 @@
+{
+  "name": "microinteractionlab",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Microinteraction Lab - UI microinteractions playground with code generation",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IvanZhutyaev/MicrointeractionLab.git"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "framer-motion": "^11.3.27",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.10",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.1"
+  },
+  "bugs": {
+    "url": "https://github.com/IvanZhutyaev/MicrointeractionLab/issues"
+  },
+  "homepage": "https://github.com/IvanZhutyaev/MicrointeractionLab#readme"
+}
