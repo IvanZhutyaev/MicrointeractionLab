@@ -9,6 +9,15 @@ export function PreviewArea() {
   const animationA = useAnimationStore((s) => s.animationA);
   const animationB = useAnimationStore((s) => s.animationB);
   const componentType = useAnimationStore((s) => s.componentType);
+  const galleryHover = useAnimationStore((s) => s.galleryHover);
+
+  const hoveredA = galleryHover.active && galleryHover.target === "A";
+  const hoveredB = galleryHover.active && galleryHover.target === "B";
+
+  const animationAForPreview = hoveredA ? galleryHover.config : animationA;
+  const animationBForPreview = hoveredB ? galleryHover.config : animationB;
+  const componentTypeAForPreview = hoveredA ? galleryHover.componentType : componentType;
+  const componentTypeBForPreview = hoveredB ? galleryHover.componentType : componentType;
 
   const reducedMotion = useReducedMotion();
 
@@ -65,29 +74,37 @@ export function PreviewArea() {
 
   useEffect(() => {
     if (rafARef.current) cancelAnimationFrame(rafARef.current);
-    autoPlayProgress(animationA, setAutoProgressA, setScrubbedA, scrubbedARef, rafARef);
+    autoPlayProgress(animationAForPreview, setAutoProgressA, setScrubbedA, scrubbedARef, rafARef);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationA.trigger, animationA.duration, animationA.delay, reducedMotion]);
+  }, [animationAForPreview.trigger, animationAForPreview.duration, animationAForPreview.delay, reducedMotion]);
 
   useEffect(() => {
     if (rafBRef.current) cancelAnimationFrame(rafBRef.current);
-    autoPlayProgress(animationB, setAutoProgressB, setScrubbedB, scrubbedBRef, rafBRef);
+    autoPlayProgress(animationBForPreview, setAutoProgressB, setScrubbedB, scrubbedBRef, rafBRef);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationB.trigger, animationB.duration, animationB.delay, reducedMotion]);
+  }, [animationBForPreview.trigger, animationBForPreview.duration, animationBForPreview.delay, reducedMotion]);
 
   return (
     <div className="h-full w-full rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6">
       {!compareMode ? (
         <div className="flex h-full flex-col items-center justify-center gap-3">
           <AnimatedElement
-            config={animationA}
-            componentType={componentType}
+            config={animationAForPreview}
+            componentType={componentTypeAForPreview}
             active={editTarget === "A"}
-            triggerPreviewState={animationA.trigger === "auto" ? undefined : hoverClickStateA}
-            autoTimelineProgress={animationA.trigger === "auto" ? autoProgressA : undefined}
+            triggerPreviewState={
+              animationAForPreview.trigger === "auto" ? undefined : hoveredA ? "active" : hoverClickStateA
+            }
+            autoTimelineProgress={
+              animationAForPreview.trigger === "auto"
+                ? hoveredA
+                  ? 0.55
+                  : autoProgressA
+                : undefined
+            }
           />
 
-          {animationA.trigger === "auto" ? (
+          {animationAForPreview.trigger === "auto" && !hoveredA ? (
             <div className="w-full max-w-xs">
               <div className="mb-1 flex items-center justify-between text-[11px] text-zinc-500">
                 <span>Auto timeline</span>
@@ -176,14 +193,22 @@ export function PreviewArea() {
             <div className="mb-3 text-xs text-zinc-400">Animation A</div>
             <div className="flex flex-col items-center gap-3">
               <AnimatedElement
-                config={animationA}
-                componentType={componentType}
+                config={animationAForPreview}
+                componentType={componentTypeAForPreview}
                 active={editTarget === "A"}
-                triggerPreviewState={animationA.trigger === "auto" ? undefined : hoverClickStateA}
-                autoTimelineProgress={animationA.trigger === "auto" ? autoProgressA : undefined}
+                triggerPreviewState={
+                  animationAForPreview.trigger === "auto" ? undefined : hoveredA ? "active" : hoverClickStateA
+                }
+                autoTimelineProgress={
+                  animationAForPreview.trigger === "auto"
+                    ? hoveredA
+                      ? 0.55
+                      : autoProgressA
+                    : undefined
+                }
               />
 
-              {animationA.trigger === "auto" ? (
+              {animationAForPreview.trigger === "auto" && !hoveredA ? (
                 <div className="w-full max-w-xs">
                   <div className="mb-1 flex items-center justify-between text-[11px] text-zinc-500">
                     <span>Auto timeline</span>
@@ -266,14 +291,22 @@ export function PreviewArea() {
             <div className="mb-3 text-xs text-zinc-400">Animation B</div>
             <div className="flex flex-col items-center gap-3">
               <AnimatedElement
-                config={animationB}
-                componentType={componentType}
+                config={animationBForPreview}
+                componentType={componentTypeBForPreview}
                 active={editTarget === "B"}
-                triggerPreviewState={animationB.trigger === "auto" ? undefined : hoverClickStateB}
-                autoTimelineProgress={animationB.trigger === "auto" ? autoProgressB : undefined}
+                triggerPreviewState={
+                  animationBForPreview.trigger === "auto" ? undefined : hoveredB ? "active" : hoverClickStateB
+                }
+                autoTimelineProgress={
+                  animationBForPreview.trigger === "auto"
+                    ? hoveredB
+                      ? 0.55
+                      : autoProgressB
+                    : undefined
+                }
               />
 
-              {animationB.trigger === "auto" ? (
+              {animationBForPreview.trigger === "auto" && !hoveredB ? (
                 <div className="w-full max-w-xs">
                   <div className="mb-1 flex items-center justify-between text-[11px] text-zinc-500">
                     <span>Auto timeline</span>

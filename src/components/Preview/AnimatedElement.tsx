@@ -161,13 +161,13 @@ export function AnimatedElement({
         return {
           initial: baseState,
           animate: baseState,
-          transition: reducedMotion ? { duration: 0, delay: 0 } : getTransition(),
+          transition: { duration: 0, delay: 0 },
         };
       }
       return {
         initial: baseState,
         animate: activeState,
-        transition: reducedMotion ? { duration: 0, delay: 0 } : getTransition(),
+        transition: { duration: 0, delay: 0 },
       };
     }
 

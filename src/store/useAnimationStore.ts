@@ -45,6 +45,17 @@ type State = {
   // Gallery storage
   customGallery: CustomGalleryItem[];
 
+  // Transient: preview hovered item in main PreviewArea (not persisted)
+  galleryHover:
+    | {
+        active: true;
+        target: CompareTarget;
+        config: AnimationConfig;
+        componentType: UIComponentType;
+        key: string;
+      }
+    | { active: false };
+
   // Actions
   setEditTarget: (target: CompareTarget) => void;
   setCompareMode: (enabled: boolean) => void;
@@ -65,6 +76,10 @@ type State = {
   saveCurrentToCustomGallery: (name: string, target: CompareTarget, config: AnimationConfig) => void;
   loadCustomToTarget: (id: string, target: CompareTarget) => void;
   deleteCustomGalleryItem: (id: string, target: CompareTarget) => void;
+
+  // Hover preview actions
+  setGalleryHoverPreview: (target: CompareTarget, config: AnimationConfig, componentType: UIComponentType, key: string) => void;
+  clearGalleryHoverPreview: () => void;
 };
 
 function getTargetConfig(state: State, target: CompareTarget) {
@@ -86,6 +101,8 @@ export const useAnimationStore = create<State>()(
       activeGalleryKeyA: "none",
       activeGalleryKeyB: "none",
       customGallery: [],
+
+      galleryHover: { active: false },
 
       setEditTarget: (target) => set({ editTarget: target }),
       setCompareMode: (enabled) => set({ compareMode: enabled }),
@@ -187,6 +204,16 @@ export const useAnimationStore = create<State>()(
           const nextKey = s.activeGalleryKeyB === `custom:${id}` ? "none" : s.activeGalleryKeyB;
           return { customGallery: next, activeGalleryKeyB: nextKey };
         });
+      },
+
+      setGalleryHoverPreview: (target, config, componentType, key) => {
+        set({
+          galleryHover: { active: true, target, config, componentType, key },
+        });
+      },
+
+      clearGalleryHoverPreview: () => {
+        set({ galleryHover: { active: false } });
       },
     }),
     {

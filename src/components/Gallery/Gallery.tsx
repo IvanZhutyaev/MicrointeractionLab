@@ -35,6 +35,8 @@ export function Gallery() {
   const deleteSaved = useAnimationStore((s) => s.deleteCustomGalleryItem);
 
   const saveToGallery = useAnimationStore((s) => s.saveCurrentToCustomGallery);
+  const setGalleryHoverPreview = useAnimationStore((s) => s.setGalleryHoverPreview);
+  const clearGalleryHoverPreview = useAnimationStore((s) => s.clearGalleryHoverPreview);
   const animationA = useAnimationStore((s) => s.animationA);
   const animationB = useAnimationStore((s) => s.animationB);
   const currentConfig = target === "A" ? animationA : animationB;
@@ -137,9 +139,22 @@ export function Gallery() {
                   if (e.key === "Enter" || e.key === " ") applyPreset(target, p.id as any);
                 }}
                 onMouseEnter={() => setHoveredItemKey(`preset:${p.id}`)}
-                onMouseLeave={() => setHoveredItemKey(null)}
-                onFocus={() => setHoveredItemKey(`preset:${p.id}`)}
-                onBlur={() => setHoveredItemKey(null)}
+                onMouseLeave={() => {
+                  setHoveredItemKey(null);
+                  clearGalleryHoverPreview();
+                }}
+                onFocus={() => {
+                  setHoveredItemKey(`preset:${p.id}`);
+                  setGalleryHoverPreview(target, p.config, componentType, `preset:${p.id}`);
+                }}
+                onBlur={() => {
+                  setHoveredItemKey(null);
+                  clearGalleryHoverPreview();
+                }}
+                onPointerEnter={() => {
+                  setHoveredItemKey(`preset:${p.id}`);
+                  setGalleryHoverPreview(target, p.config, componentType, `preset:${p.id}`);
+                }}
                 className={
                   p.id === activePresetId
                     ? "group cursor-pointer rounded-2xl bg-indigo-500/10 p-3 text-left ring-1 ring-indigo-400/80 hover:bg-indigo-500/15"
@@ -210,10 +225,22 @@ export function Gallery() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") applySaved(it.id, target);
                   }}
-                  onMouseEnter={() => setHoveredItemKey(key)}
-                  onMouseLeave={() => setHoveredItemKey(null)}
-                  onFocus={() => setHoveredItemKey(key)}
-                  onBlur={() => setHoveredItemKey(null)}
+                  onMouseEnter={() => {
+                    setHoveredItemKey(key);
+                    setGalleryHoverPreview(target, it.config, it.componentType, key);
+                  }}
+                  onMouseLeave={() => {
+                    setHoveredItemKey(null);
+                    clearGalleryHoverPreview();
+                  }}
+                  onFocus={() => {
+                    setHoveredItemKey(key);
+                    setGalleryHoverPreview(target, it.config, it.componentType, key);
+                  }}
+                  onBlur={() => {
+                    setHoveredItemKey(null);
+                    clearGalleryHoverPreview();
+                  }}
                   className={
                     selected
                       ? "group cursor-pointer rounded-2xl bg-indigo-500/10 p-3 text-left ring-1 ring-indigo-400/80 hover:bg-indigo-500/15"
@@ -243,7 +270,7 @@ export function Gallery() {
                     <AnimatedElement
                       config={it.config}
                       compact
-                      componentType={componentType}
+                      componentType={it.componentType}
                       active={false}
                       triggerPreviewState={
                         it.config.trigger === "auto" ? undefined : hovered ? "active" : "idle"
