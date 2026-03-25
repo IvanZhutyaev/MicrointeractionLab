@@ -27,15 +27,13 @@ export function AnimatedButton({ config, compact, active }: Props) {
     .filter(Boolean)
     .join(" ");
 
-  if (reducedMotion) {
-    return (
-      <button type="button" className={baseButtonClass} style={baseStyle}>
-        Button
-      </button>
-    );
-  }
-
   const motionProps = mapConfigToMotionProps(config);
+  // In reduced-motion mode we still want the preview to reflect config changes,
+  // but without visible animation/transitions.
+  if (reducedMotion && motionProps.transition) {
+    const t = motionProps.transition as Record<string, unknown>;
+    motionProps.transition = { ...t, duration: 0, delay: 0 };
+  }
 
   return (
     <motion.button
