@@ -80,6 +80,9 @@ export function ControlsPanel() {
   const resetTarget = useAnimationStore((s) => s.resetTarget);
   const componentType = useAnimationStore((s) => s.componentType);
   const setComponentType = useAnimationStore((s) => s.setComponentType);
+  const copyAToB = useAnimationStore((s) => s.copyAToB);
+  const copyBToA = useAnimationStore((s) => s.copyBToA);
+  const swapAB = useAnimationStore((s) => s.swapAB);
 
   const target: CompareTarget = compareMode ? editTarget : "A";
   const config: AnimationConfig = target === "A" ? animationA : animationB;
@@ -120,29 +123,55 @@ export function ControlsPanel() {
         </div>
 
         {compareMode ? (
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setEditTarget("A")}
-              className={
-                target === "A"
-                  ? "flex-1 rounded-lg bg-indigo-500/20 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400"
-                  : "flex-1 rounded-lg bg-zinc-800/40 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800/60"
-              }
-            >
-              Edit A
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditTarget("B")}
-              className={
-                target === "B"
-                  ? "flex-1 rounded-lg bg-indigo-500/20 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400"
-                  : "flex-1 rounded-lg bg-zinc-800/40 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800/60"
-              }
-            >
-              Edit B
-            </button>
+          <div className="mt-3 space-y-2">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditTarget("A")}
+                className={
+                  target === "A"
+                    ? "flex-1 rounded-lg bg-indigo-500/20 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400"
+                    : "flex-1 rounded-lg bg-zinc-800/40 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800/60"
+                }
+              >
+                Edit A
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditTarget("B")}
+                className={
+                  target === "B"
+                    ? "flex-1 rounded-lg bg-indigo-500/20 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400"
+                    : "flex-1 rounded-lg bg-zinc-800/40 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800/60"
+                }
+              >
+                Edit B
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={copyAToB}
+                className="rounded-lg bg-zinc-800/40 py-2 text-[11px] font-semibold text-zinc-300 ring-1 ring-zinc-700 hover:bg-zinc-800/60"
+              >
+                A → B
+              </button>
+              <button
+                type="button"
+                onClick={swapAB}
+                className="rounded-lg bg-zinc-800/40 py-2 text-[11px] font-semibold text-zinc-300 ring-1 ring-zinc-700 hover:bg-zinc-800/60"
+              >
+                Swap
+              </button>
+              <button
+                type="button"
+                onClick={copyBToA}
+                className="rounded-lg bg-zinc-800/40 py-2 text-[11px] font-semibold text-zinc-300 ring-1 ring-zinc-700 hover:bg-zinc-800/60"
+              >
+                B → A
+              </button>
+            </div>
           </div>
         ) : null}
 

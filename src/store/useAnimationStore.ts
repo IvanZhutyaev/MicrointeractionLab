@@ -56,6 +56,11 @@ type State = {
   applyPreset: (target: CompareTarget, presetId: PresetId) => void;
   resetTarget: (target: CompareTarget) => void;
 
+  // Compare helpers
+  copyAToB: () => void;
+  copyBToA: () => void;
+  swapAB: () => void;
+
   // Custom gallery actions
   saveCurrentToCustomGallery: (name: string, target: CompareTarget, config: AnimationConfig) => void;
   loadCustomToTarget: (id: string, target: CompareTarget) => void;
@@ -114,6 +119,34 @@ export const useAnimationStore = create<State>()(
         } else {
           set({ animationB: DEFAULT_CONFIG, activePresetIdB: "custom", activeGalleryKeyB: "none" });
         }
+      },
+
+      copyAToB: () => {
+        const s = get();
+        set({
+          animationB: { ...s.animationA },
+          activePresetIdB: s.activePresetIdA,
+          activeGalleryKeyB: s.activeGalleryKeyA,
+        });
+      },
+      copyBToA: () => {
+        const s = get();
+        set({
+          animationA: { ...s.animationB },
+          activePresetIdA: s.activePresetIdB,
+          activeGalleryKeyA: s.activeGalleryKeyB,
+        });
+      },
+      swapAB: () => {
+        const s = get();
+        set({
+          animationA: { ...s.animationB },
+          animationB: { ...s.animationA },
+          activePresetIdA: s.activePresetIdB,
+          activePresetIdB: s.activePresetIdA,
+          activeGalleryKeyA: s.activeGalleryKeyB,
+          activeGalleryKeyB: s.activeGalleryKeyA,
+        });
       },
 
       saveCurrentToCustomGallery: (name, target, config) => {

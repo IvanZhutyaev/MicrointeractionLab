@@ -11,6 +11,10 @@ type Props = {
   active?: boolean;
   replayKey?: number;
   autoPreviewMode?: "auto" | "idle" | "active";
+  // For hover/click we can force a preview state (useful on touch / for gallery).
+  triggerPreviewState?: "idle" | "active";
+  // For auto we can drive the preview by timeline progress (0..1).
+  autoTimelineProgress?: number;
 };
 
 function buildAutoKey(config: AnimationConfig, componentType: UIComponentType, replayKey?: number) {
@@ -29,6 +33,8 @@ export function AnimatedElement({
   active,
   replayKey,
   autoPreviewMode = "auto",
+  triggerPreviewState,
+  autoTimelineProgress,
 }: Props) {
   const reducedMotion = useReducedMotion();
 
@@ -36,61 +42,165 @@ export function AnimatedElement({
     boxShadow: shadowToCss(0),
   };
 
-  const autoMotionKey = config.trigger === "auto" ? buildAutoKey(config, componentType, replayKey) : undefined;
+  const autoMotionKey = config.trigger === "auto" && autoTimelineProgress === undefined ? buildAutoKey(config, componentType, replayKey) : undefined;
 
-  const motionProps = mapConfigToMotionProps(config);
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-  const ease = easingToFramerEase(config.easing);
-
-  if (config.trigger === "auto" && (autoPreviewMode === "idle" || autoPreviewMode === "active")) {
-    const shadow0 = shadowToCss(0);
-    const shadow1 = shadowToCss(config.shadow);
-
-    const idleState = {
-      scale: 1,
-      opacity: 1,
-      x: 0,
-      y: 0,
-      rotate: 0,
-      boxShadow: shadow0,
-    };
-
-    const activeState = {
-      scale: config.scale,
-      opacity: config.opacity,
-      x: config.translateX,
-      y: config.translateY,
-      rotate: config.rotate,
-      boxShadow: shadow1,
-    };
-
-    motionProps.initial = idleState;
-    motionProps.animate = autoPreviewMode === "idle" ? idleState : activeState;
-    motionProps.transition = { duration: 0, delay: 0, ease };
-  } else if (reducedMotion) {
-    // Important: for `auto` we animate from base -> target -> base.
-    // If we just set duration=0, it will snap to the last keyframe ("base") and look like nothing happened.
-    // So in reduced-motion mode we jump directly to the "target" state.
-    if (config.trigger === "auto") {
-      const shadow0 = shadowToCss(0);
-      const shadow1 = shadowToCss(config.shadow);
-
-      // In reduced-motion mode we treat "auto" as "active" for visibility.
-      motionProps.initial = { scale: 1, opacity: 1, x: 0, y: 0, rotate: 0, boxShadow: shadow0 };
-      motionProps.animate = {
-        scale: config.scale,
-        opacity: config.opacity,
-        x: config.translateX,
-        y: config.translateY,
-        rotate: config.rotate,
-        boxShadow: shadow1,
-      };
-      motionProps.transition = { duration: 0, delay: 0, ease };
-    } else if (motionProps.transition) {
-      const t = motionProps.transition as Record<string, unknown>;
-      motionProps.transition = { ...t, duration: 0, delay: 0 };
+  const easingToBezierPoints = (easing: AnimationConfig["easing"]) => {
+    if (easing.kind === "cubicBezier") return easing;
+    switch (easing.preset) {
+      case "easeOut":
+        return { kind: "cubicBezier" as const, x1: 0, y1: 0, x2: 0.58, y2: 1 };
+      case "easeIn":
+        return { kind: "cubicBezier" as const, x1: 0.42, y1: 0, x2: 1, y2: 1 };
+      case "easeInOut":
+        return { kind: "cubicBezier" as const, x1: 0.42, y1: 0, x2: 0.58, y2: 1 };
+      case "linear":
+        return { kind: "cubicBezier" as const, x1: 0, y1: 0, x2: 1, y2: 1 };
     }
-  }
+  };
+
+  const cubicBezierEase = (t: number, x1: number, y1: number, x2: number, y2: number) => {
+    // Solve for u in x(u)=t, then return y(u).
+    const cubicX = (u: number) => {
+      const u1 = 1 - u;
+      return 3 * u1 * u1 * u * x1 + 3 * u1 * u * u * x2 + u * u * u;
+    };
+    const cubicY = (u: number) => {
+      const u1 = 1 - u;
+      return 3 * u1 * u1 * u * y1 + 3 * u1 * u * u * y2 + u * u * u;
+    };
+
+    // Fast paths.
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+
+    let lo = 0;
+    let hi = 1;
+    for (let i = 0; i < 18; i++) {
+      const mid = (lo + hi) / 2;
+      const x = cubicX(mid);
+      if (x < t) lo = mid;
+      else hi = mid;
+    }
+    const u = (lo + hi) / 2;
+    return cubicY(u);
+  };
+
+  const getTransition = (): { duration: number; delay: number; ease: string | number[] } => {
+    const ease = easingToFramerEase(config.easing);
+    return { duration: config.duration / 1000, delay: config.delay / 1000, ease };
+  };
+
+  const baseState = {
+    scale: 1,
+    opacity: 1,
+    x: 0,
+    y: 0,
+    rotate: 0,
+    boxShadow: shadowToCss(0),
+  };
+
+  const activeState = {
+    scale: config.scale,
+    opacity: config.opacity,
+    x: config.translateX,
+    y: config.translateY,
+    rotate: config.rotate,
+    boxShadow: shadowToCss(config.shadow),
+  };
+
+  const motionProps = (() => {
+    // 1) Auto timeline scrubbing.
+    if (config.trigger === "auto" && typeof autoTimelineProgress === "number") {
+      const peakTime = 0.55;
+      const t = Math.max(0, Math.min(1, autoTimelineProgress));
+
+      const bez = easingToBezierPoints(config.easing);
+      const { x1, y1, x2, y2 } = bez;
+
+      if (t <= peakTime) {
+        const seg = t / peakTime;
+        const eased = cubicBezierEase(seg, x1, y1, x2, y2);
+        const shadowN = lerp(0, config.shadow, eased);
+        return {
+          initial: baseState,
+          animate: {
+            scale: lerp(1, config.scale, eased),
+            opacity: lerp(1, config.opacity, eased),
+            x: lerp(0, config.translateX, eased),
+            y: lerp(0, config.translateY, eased),
+            rotate: lerp(0, config.rotate, eased),
+            boxShadow: shadowToCss(shadowN),
+          },
+          transition: { duration: 0, delay: 0 },
+        };
+      }
+
+      const seg = (t - peakTime) / (1 - peakTime);
+      const eased = cubicBezierEase(seg, x1, y1, x2, y2);
+      const shadowN = lerp(config.shadow, 0, eased);
+
+      return {
+        initial: baseState,
+        animate: {
+          scale: lerp(config.scale, 1, eased),
+          opacity: lerp(config.opacity, 1, eased),
+          x: lerp(config.translateX, 0, eased),
+          y: lerp(config.translateY, 0, eased),
+          rotate: lerp(config.rotate, 0, eased),
+          boxShadow: shadowToCss(shadowN),
+        },
+        transition: { duration: 0, delay: 0 },
+      };
+    }
+
+    // 2) Forced preview for hover/click (touch-friendly).
+    if (config.trigger !== "auto" && triggerPreviewState) {
+      if (triggerPreviewState === "idle") {
+        return {
+          initial: baseState,
+          animate: baseState,
+          transition: reducedMotion ? { duration: 0, delay: 0 } : getTransition(),
+        };
+      }
+      return {
+        initial: baseState,
+        animate: activeState,
+        transition: reducedMotion ? { duration: 0, delay: 0 } : getTransition(),
+      };
+    }
+
+    // 3) Auto in idle/active mode (static frame).
+    if (config.trigger === "auto" && (autoPreviewMode === "idle" || autoPreviewMode === "active")) {
+      return {
+        initial: baseState,
+        animate: autoPreviewMode === "idle" ? baseState : activeState,
+        transition: reducedMotion ? { duration: 0, delay: 0 } : { duration: 0, delay: 0 },
+      };
+    }
+
+    // 4) Default behaviour: whileHover/whileTap/auto keyframes.
+    const p = mapConfigToMotionProps(config);
+    if (!reducedMotion) return p;
+
+    // Reduced motion: snap in a visible way.
+    if (config.trigger === "auto") {
+      return {
+        ...p,
+        initial: baseState,
+        animate: activeState,
+        transition: { duration: 0, delay: 0 },
+      };
+    }
+    if (p.transition) {
+      return {
+        ...p,
+        transition: { ...(p.transition as Record<string, unknown>), duration: 0, delay: 0 },
+      };
+    }
+    return p;
+  })();
 
   const sharedFocusClass =
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950";

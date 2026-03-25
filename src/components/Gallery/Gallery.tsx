@@ -29,6 +29,8 @@ export function Gallery() {
   const [filter, setFilter] = useState<"all" | Trigger>("all");
   const [tab, setTab] = useState<"presets" | "saved">("presets");
 
+  const [hoveredItemKey, setHoveredItemKey] = useState<string | null>(null);
+
   const applySaved = useAnimationStore((s) => s.loadCustomToTarget);
   const deleteSaved = useAnimationStore((s) => s.deleteCustomGalleryItem);
 
@@ -134,6 +136,10 @@ export function Gallery() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") applyPreset(target, p.id as any);
                 }}
+                onMouseEnter={() => setHoveredItemKey(`preset:${p.id}`)}
+                onMouseLeave={() => setHoveredItemKey(null)}
+                onFocus={() => setHoveredItemKey(`preset:${p.id}`)}
+                onBlur={() => setHoveredItemKey(null)}
                 className={
                   p.id === activePresetId
                     ? "group cursor-pointer rounded-2xl bg-indigo-500/10 p-3 text-left ring-1 ring-indigo-400/80 hover:bg-indigo-500/15"
@@ -152,7 +158,16 @@ export function Gallery() {
                 </div>
 
                 <div className="mt-3">
-                  <AnimatedElement config={p.config} compact componentType={componentType} active={false} />
+                  <AnimatedElement
+                    config={p.config}
+                    compact
+                    componentType={componentType}
+                    active={false}
+                    triggerPreviewState={
+                      p.config.trigger === "auto" ? undefined : hoveredItemKey === `preset:${p.id}` ? "active" : "idle"
+                    }
+                    autoTimelineProgress={p.config.trigger === "auto" ? (hoveredItemKey === `preset:${p.id}` ? 0.55 : 0) : undefined}
+                  />
                 </div>
 
                 {p.id === activePresetId ? (
@@ -184,6 +199,8 @@ export function Gallery() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {filteredSaved.map((it) => {
               const selected = activeGalleryKey === `custom:${it.id}`;
+              const key = `custom:${it.id}`;
+              const hovered = hoveredItemKey === key;
               return (
                 <div
                   key={it.id}
@@ -193,6 +210,10 @@ export function Gallery() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") applySaved(it.id, target);
                   }}
+                  onMouseEnter={() => setHoveredItemKey(key)}
+                  onMouseLeave={() => setHoveredItemKey(null)}
+                  onFocus={() => setHoveredItemKey(key)}
+                  onBlur={() => setHoveredItemKey(null)}
                   className={
                     selected
                       ? "group cursor-pointer rounded-2xl bg-indigo-500/10 p-3 text-left ring-1 ring-indigo-400/80 hover:bg-indigo-500/15"
@@ -219,7 +240,18 @@ export function Gallery() {
                   </div>
 
                   <div className="mt-3">
-                    <AnimatedElement config={it.config} compact componentType={componentType} active={false} />
+                    <AnimatedElement
+                      config={it.config}
+                      compact
+                      componentType={componentType}
+                      active={false}
+                      triggerPreviewState={
+                        it.config.trigger === "auto" ? undefined : hovered ? "active" : "idle"
+                      }
+                      autoTimelineProgress={
+                        it.config.trigger === "auto" ? (hovered ? 0.55 : 0) : undefined
+                      }
+                    />
                   </div>
 
                   {selected ? (
