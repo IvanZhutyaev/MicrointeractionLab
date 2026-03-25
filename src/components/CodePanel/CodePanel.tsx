@@ -35,6 +35,7 @@ export function CodePanel() {
   const codeLanguage = useAnimationStore((s) => s.codeLanguage);
   const setCodeLanguage = useAnimationStore((s) => s.setCodeLanguage);
   const componentType = useAnimationStore((s) => s.componentType);
+  const applyImportedSetup = useAnimationStore((s) => s.applyImportedSetup);
 
   const target: CompareTarget = compareMode ? editTarget : "A";
   const config = target === "A" ? animationA : animationB;
@@ -57,6 +58,8 @@ export function CodePanel() {
   }, [code]);
 
   const [toast, setToast] = useState<string | null>(null);
+  const [importJson, setImportJson] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
   const [rememberGithubToken, setRememberGithubToken] = useState(false);
   const [githubToken, setGithubToken] = useState(() => {
     try {
@@ -191,6 +194,40 @@ export function CodePanel() {
     return { branch, filename, filePath };
   };
 
+  const exportPayload = useMemo(
+    () => ({
+      componentType,
+      codeLanguage,
+      animationA,
+      animationB,
+    }),
+    [componentType, codeLanguage, animationA, animationB],
+  );
+
+  function encodeSharePayload(payload: unknown) {
+    const json = JSON.stringify(payload);
+    const b64 = window.btoa(unescape(encodeURIComponent(json)));
+    return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  const shareUrl = useMemo(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("share", encodeSharePayload(exportPayload));
+    return url.toString();
+  }, [exportPayload]);
+
+  function downloadText(filename: string, text: string) {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  }
+
   return (
     <div className="h-full w-full rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -226,6 +263,94 @@ export function CodePanel() {
         >
           Copy Code
         </button>
+
+        <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-900/30 p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-zinc-200">Export / Share</div>
+              <div className="text-[11px] text-zinc-500">JSON и ссылка на точную настройку</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                const ok = await copyTextToClipboard(shareUrl);
+                showToast(ok ? "Share link copied" : "Copy failed");
+              }}
+              className="rounded-xl bg-indigo-500/15 px-3 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400 hover:bg-indigo-500/20"
+            >
+              Copy share link
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadText("microinteraction-setup.json", JSON.stringify(exportPayload, null, 2))}
+              className="rounded-xl bg-zinc-900/40 px-3 py-2 text-xs font-semibold text-zinc-200 ring-1 ring-zinc-800 hover:bg-zinc-900/60"
+            >
+              Download JSON
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => downloadText(`microinteraction-snippet.${codeLanguage === "css" ? "css" : "tsx"}`, code)}
+            className="mt-2 w-full rounded-xl bg-zinc-900/40 px-3 py-2 text-xs font-semibold text-zinc-200 ring-1 ring-zinc-800 hover:bg-zinc-900/60"
+          >
+            Download snippet
+          </button>
+
+          <div className="mt-3">
+            <div className="mb-1 text-[11px] text-zinc-400">Import JSON</div>
+            <textarea
+              value={importJson}
+              onChange={(e) => setImportJson(e.target.value)}
+              placeholder="Paste exported JSON here..."
+              className="h-24 w-full resize-none rounded-lg bg-zinc-950/40 px-3 py-2 text-xs text-zinc-100 ring-1 ring-zinc-800 placeholder:text-zinc-600"
+            />
+
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={importBusy}
+                onClick={async () => {
+                  if (!importJson.trim()) return showToast("Paste JSON first");
+                  try {
+                    setImportBusy(true);
+                    const payload = JSON.parse(importJson);
+                    if (!payload?.animationA || !payload?.animationB) throw new Error("Missing animationA/animationB");
+                    applyImportedSetup({
+                      componentType: payload.componentType,
+                      animationA: payload.animationA,
+                      animationB: payload.animationB,
+                      codeLanguage: payload.codeLanguage,
+                    });
+                    showToast("Imported!");
+                    setImportJson("");
+                  } catch (e: any) {
+                    showToast(e?.message ?? "Invalid JSON");
+                  } finally {
+                    setImportBusy(false);
+                  }
+                }}
+                className="rounded-xl bg-indigo-500/15 px-3 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400 hover:bg-indigo-500/20 disabled:opacity-50"
+              >
+                Apply
+              </button>
+              <button
+                type="button"
+                disabled={importBusy}
+                onClick={() => {
+                  setImportJson("");
+                  showToast("Cleared");
+                }}
+                className="rounded-xl bg-zinc-900/40 px-3 py-2 text-xs font-semibold text-zinc-200 ring-1 ring-zinc-800 hover:bg-zinc-900/60 disabled:opacity-50"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-900/30 p-3">
           <div className="mb-2 flex items-center justify-between gap-3">

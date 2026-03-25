@@ -5,6 +5,7 @@ export type Preset = {
   name: string;
   trigger: Trigger;
   description: string;
+  tags: string[];
   config: AnimationConfig;
 };
 
@@ -16,6 +17,7 @@ export const PRESETS: Preset[] = [
     name: "Soft Hover",
     trigger: "hover",
     description: "Мягкое увеличение и легкое затемнение при наведении.",
+    tags: ["subtle", "smooth", "hover"],
     config: {
       trigger: "hover",
       duration: 200,
@@ -27,6 +29,7 @@ export const PRESETS: Preset[] = [
       rotate: 0,
       opacity: 0.92,
       shadow: 0.35,
+      autoPeak: 0.55,
     },
   },
   {
@@ -34,6 +37,7 @@ export const PRESETS: Preset[] = [
     name: "Material Press",
     trigger: "click",
     description: "Как кнопка Material: небольшое прижатие и тень.",
+    tags: ["material", "press", "click"],
     config: {
       trigger: "click",
       duration: 140,
@@ -45,6 +49,7 @@ export const PRESETS: Preset[] = [
       rotate: 0,
       opacity: 1,
       shadow: 0.55,
+      autoPeak: 0.55,
     },
   },
   {
@@ -52,6 +57,7 @@ export const PRESETS: Preset[] = [
     name: "Elastic Click",
     trigger: "click",
     description: "Легкий упругий клик: заметный отклик без перегруза.",
+    tags: ["elastic", "click", "playful"],
     config: {
       trigger: "click",
       duration: 320,
@@ -63,6 +69,7 @@ export const PRESETS: Preset[] = [
       rotate: 3,
       opacity: 0.98,
       shadow: 0.65,
+      autoPeak: 0.55,
     },
   },
 ];

@@ -72,6 +72,29 @@ export function generateCssCode(config: AnimationConfig, _componentType: "button
 }`;
   }
 
+  if (config.trigger === "hoverClick") {
+    return `.microinteraction {
+  transition:
+    transform ${durationMs}ms ${easeCss} ${delayMs}ms,
+    opacity ${durationMs}ms ${easeCss} ${delayMs}ms,
+    box-shadow ${durationMs}ms ${easeCss} ${delayMs}ms;
+  opacity: 1;
+  box-shadow: ${shadow0};
+}
+
+.microinteraction:hover, .microinteraction:focus-visible {
+  transform: ${targetTransform};
+  opacity: ${config.opacity};
+  box-shadow: ${shadow1};
+}
+
+.microinteraction:active {
+  transform: ${targetTransform};
+  opacity: ${config.opacity};
+  box-shadow: ${shadow1};
+}`;
+  }
+
   // auto/loading
   return `@keyframes microinteractionAuto {
   0%, 100% {
@@ -79,7 +102,7 @@ export function generateCssCode(config: AnimationConfig, _componentType: "button
     opacity: 1;
     box-shadow: ${shadow0};
   }
-  55% {
+  ${Math.round(config.autoPeak * 100)}% {
     transform: ${targetTransform};
     opacity: ${config.opacity};
     box-shadow: ${shadow1};

@@ -65,6 +65,27 @@ export function generateFramerMotionCode(
 </${motionTag}>`;
   }
 
+  if (config.trigger === "hoverClick") {
+    if (componentType === "input") {
+      return `<motion.input
+  whileHover={{ ${targetPart} }}
+  whileTap={{ ${targetPart} }}
+  whileFocus={{ ${targetPart} }}
+  ${transition}
+  ${inputProps}
+/>`.trim();
+    }
+
+    return `<${motionTag}
+  whileHover={{ ${targetPart} }}
+  whileTap={{ ${targetPart} }}
+  whileFocus={{ ${targetPart} }}
+  ${transition}
+>
+  ${content}
+</${motionTag}>`;
+  }
+
   // auto / loading
   if (componentType === "input") {
     return `<motion.input
@@ -77,7 +98,7 @@ export function generateFramerMotionCode(
     rotate: [0, ${config.rotate}, 0],
     boxShadow: ["${shadow0}", "${shadow1}", "${shadow0}"],
   }}
-  transition={{ duration: ${seconds(config.duration)}, delay: ${seconds(config.delay)}, ease: ${easingToFramerCode(config.easing)}, times: [0, 0.55, 1] }}
+  transition={{ duration: ${seconds(config.duration)}, delay: ${seconds(config.delay)}, ease: ${easingToFramerCode(config.easing)}, times: [0, ${config.autoPeak}, 1] }}
   ${inputProps}
 />`.trim();
   }
@@ -92,7 +113,7 @@ export function generateFramerMotionCode(
     rotate: [0, ${config.rotate}, 0],
     boxShadow: ["${shadow0}", "${shadow1}", "${shadow0}"],
   }}
-  transition={{ duration: ${seconds(config.duration)}, delay: ${seconds(config.delay)}, ease: ${easingToFramerCode(config.easing)}, times: [0, 0.55, 1] }}
+  transition={{ duration: ${seconds(config.duration)}, delay: ${seconds(config.delay)}, ease: ${easingToFramerCode(config.easing)}, times: [0, ${config.autoPeak}, 1] }}
 >
   ${content}
 </${motionTag}>`;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAnimationStore } from "./store/useAnimationStore";
 import { ControlsPanel } from "./components/Controls/ControlsPanel";
 import { PreviewArea } from "./components/Preview/PreviewArea";
@@ -8,6 +8,7 @@ import { GalleryModal } from "./components/Gallery/GalleryModal";
 export default function App() {
   const theme = useAnimationStore((s) => s.theme);
   const setTheme = useAnimationStore((s) => s.setTheme);
+  const applyImportedSetup = useAnimationStore((s) => s.applyImportedSetup);
   const [showGallery, setShowGallery] = useState(false);
 
   const rootClassName = useMemo(() => {
@@ -16,6 +17,29 @@ export default function App() {
     }
     return "min-h-screen bg-zinc-950 text-zinc-50 p-4";
   }, [theme]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const share = params.get("share");
+    if (!share) return;
+
+    try {
+      const b64 = share.replace(/-/g, "+").replace(/_/g, "/");
+      const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
+      const jsonText = decodeURIComponent(escape(window.atob(b64 + pad)));
+      const payload = JSON.parse(jsonText) as any;
+      if (payload?.animationA && payload?.animationB) {
+        applyImportedSetup({
+          componentType: payload.componentType,
+          animationA: payload.animationA,
+          animationB: payload.animationB,
+          codeLanguage: payload.codeLanguage,
+        });
+      }
+    } catch {
+      // ignore invalid share links
+    }
+  }, [applyImportedSetup]);
 
   return (
     <div className={rootClassName}>

@@ -19,14 +19,23 @@ export function PreviewArea() {
   const componentTypeAForPreview = hoveredA ? galleryHover.componentType : componentType;
   const componentTypeBForPreview = hoveredB ? galleryHover.componentType : componentType;
 
+  const peakAForPreview = animationAForPreview.autoPeak ?? 0.55;
+  const peakBForPreview = animationBForPreview.autoPeak ?? 0.55;
+
   const reducedMotion = useReducedMotion();
 
   const defaultHoverClick = "idle" as const;
   const [hoverClickStateA, setHoverClickStateA] = useState<"idle" | "active">(defaultHoverClick);
   const [hoverClickStateB, setHoverClickStateB] = useState<"idle" | "active">(defaultHoverClick);
 
-  const [autoProgressA, setAutoProgressA] = useState<number>(reducedMotion ? 0.55 : 0);
-  const [autoProgressB, setAutoProgressB] = useState<number>(reducedMotion ? 0.55 : 0);
+  const [fps, setFps] = useState<number>(0);
+  const fpsFramesRef = useRef(0);
+  const fpsLastRef = useRef<number>(performance.now());
+
+  const peakAForInit = animationA.autoPeak ?? 0.55;
+  const peakBForInit = animationB.autoPeak ?? 0.55;
+  const [autoProgressA, setAutoProgressA] = useState<number>(reducedMotion ? peakAForInit : 0);
+  const [autoProgressB, setAutoProgressB] = useState<number>(reducedMotion ? peakBForInit : 0);
 
   const [scrubbedA, setScrubbedA] = useState(false);
   const [scrubbedB, setScrubbedB] = useState(false);
@@ -47,7 +56,7 @@ export function PreviewArea() {
     setScrubbed(false);
     scrubbedRef.current = false;
     if (reducedMotion) {
-      setProgress(0.55);
+      setProgress(anim.autoPeak ?? 0.55);
       return;
     }
 
@@ -84,8 +93,32 @@ export function PreviewArea() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationBForPreview.trigger, animationBForPreview.duration, animationBForPreview.delay, reducedMotion]);
 
+  useEffect(() => {
+    let raf = 0;
+    fpsFramesRef.current = 0;
+    fpsLastRef.current = performance.now();
+
+    const tick = (now: number) => {
+      fpsFramesRef.current += 1;
+      const dt = now - fpsLastRef.current;
+      if (dt >= 600) {
+        const nextFps = Math.round((fpsFramesRef.current * 1000) / dt);
+        setFps(nextFps);
+        fpsFramesRef.current = 0;
+        fpsLastRef.current = now;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   return (
-    <div className="h-full w-full rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6">
+    <div className="relative h-full w-full rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6">
+      <div className="absolute right-3 top-3 rounded-lg bg-zinc-950/60 px-2 py-1 text-[11px] text-zinc-200 ring-1 ring-zinc-800">
+        FPS: {fps || "—"}
+      </div>
       {!compareMode ? (
         <div className="flex h-full flex-col items-center justify-center gap-3">
           <AnimatedElement
@@ -98,7 +131,7 @@ export function PreviewArea() {
             autoTimelineProgress={
               animationAForPreview.trigger === "auto"
                 ? hoveredA
-                  ? 0.55
+                ? peakAForPreview
                   : autoProgressA
                 : undefined
             }
@@ -144,10 +177,10 @@ export function PreviewArea() {
                   onClick={() => {
                     setScrubbedA(true);
                     scrubbedARef.current = true;
-                    setAutoProgressA(0.55);
+                    setAutoProgressA(animationAForPreview.autoPeak ?? 0.55);
                   }}
                   className={
-                    autoProgressA > 0.52 && autoProgressA < 0.58
+                    Math.abs(autoProgressA - peakAForPreview) < 0.03
                       ? "flex-1 rounded-lg bg-indigo-500/20 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400"
                       : "flex-1 rounded-lg bg-zinc-950/60 py-2 text-xs font-semibold text-zinc-100 ring-1 ring-zinc-800 hover:bg-zinc-950/80"
                   }
@@ -202,7 +235,7 @@ export function PreviewArea() {
                 autoTimelineProgress={
                   animationAForPreview.trigger === "auto"
                     ? hoveredA
-                      ? 0.55
+                      ? peakAForPreview
                       : autoProgressA
                     : undefined
                 }
@@ -247,13 +280,13 @@ export function PreviewArea() {
                       onClick={() => {
                         setScrubbedA(true);
                         scrubbedARef.current = true;
-                        setAutoProgressA(0.55);
+                    setAutoProgressA(animationAForPreview.autoPeak ?? 0.55);
                       }}
-                      className={
-                        autoProgressA > 0.52 && autoProgressA < 0.58
-                          ? "flex-1 rounded-lg bg-indigo-500/20 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400"
-                          : "flex-1 rounded-lg bg-zinc-950/60 py-2 text-xs font-semibold text-zinc-100 ring-1 ring-zinc-800 hover:bg-zinc-950/80"
-                      }
+                    className={
+                      Math.abs(autoProgressA - peakAForPreview) < 0.03
+                        ? "flex-1 rounded-lg bg-indigo-500/20 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400"
+                        : "flex-1 rounded-lg bg-zinc-950/60 py-2 text-xs font-semibold text-zinc-100 ring-1 ring-zinc-800 hover:bg-zinc-950/80"
+                    }
                     >
                       Active
                     </button>
@@ -300,7 +333,7 @@ export function PreviewArea() {
                 autoTimelineProgress={
                   animationBForPreview.trigger === "auto"
                     ? hoveredB
-                      ? 0.55
+                      ? peakBForPreview
                       : autoProgressB
                     : undefined
                 }
@@ -345,13 +378,13 @@ export function PreviewArea() {
                       onClick={() => {
                         setScrubbedB(true);
                         scrubbedBRef.current = true;
-                        setAutoProgressB(0.55);
+                        setAutoProgressB(animationBForPreview.autoPeak ?? 0.55);
                       }}
-                      className={
-                        autoProgressB > 0.52 && autoProgressB < 0.58
-                          ? "flex-1 rounded-lg bg-indigo-500/20 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400"
-                          : "flex-1 rounded-lg bg-zinc-950/60 py-2 text-xs font-semibold text-zinc-100 ring-1 ring-zinc-800 hover:bg-zinc-950/80"
-                      }
+                    className={
+                      Math.abs(autoProgressB - peakBForPreview) < 0.03
+                        ? "flex-1 rounded-lg bg-indigo-500/20 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400"
+                        : "flex-1 rounded-lg bg-zinc-950/60 py-2 text-xs font-semibold text-zinc-100 ring-1 ring-zinc-800 hover:bg-zinc-950/80"
+                    }
                     >
                       Active
                     </button>

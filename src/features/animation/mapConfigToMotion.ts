@@ -71,7 +71,17 @@ export function mapConfigToMotionProps(config: AnimationConfig): MotionEnginePro
     };
   }
 
+  if (config.trigger === "hoverClick") {
+    return {
+      whileHover: target,
+      whileTap: target,
+      whileFocus: target,
+      transition,
+    };
+  }
+
   // auto/loading: run a single "in-out" sequence on mount.
+  const autoPeak = Math.max(0.01, Math.min(0.99, config.autoPeak));
   return {
     initial: base,
     animate: {
@@ -85,7 +95,7 @@ export function mapConfigToMotionProps(config: AnimationConfig): MotionEnginePro
     },
     transition: {
       ...transition,
-      times: [0, 0.55, 1],
+      times: [0, autoPeak, 1],
     },
   };
 }

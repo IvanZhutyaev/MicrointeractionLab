@@ -22,6 +22,7 @@ const DEFAULT_CONFIG: AnimationConfig = {
   rotate: 5,
   opacity: 0.8,
   shadow: 0.6,
+  autoPeak: 0.55,
 };
 
 type State = {
@@ -35,6 +36,7 @@ type State = {
   codeLanguage: CodeLanguage;
   theme: ThemeMode;
   componentType: UIComponentType;
+  simulateReducedMotion: boolean;
 
   // Controls UX
   activePresetIdA: PresetId | "custom";
@@ -62,6 +64,7 @@ type State = {
   setCodeLanguage: (lang: CodeLanguage) => void;
   setTheme: (theme: ThemeMode) => void;
   setComponentType: (type: UIComponentType) => void;
+  setSimulateReducedMotion: (enabled: boolean) => void;
 
   setConfig: (target: CompareTarget, patch: Partial<AnimationConfig>) => void;
   applyPreset: (target: CompareTarget, presetId: PresetId) => void;
@@ -80,10 +83,69 @@ type State = {
   // Hover preview actions
   setGalleryHoverPreview: (target: CompareTarget, config: AnimationConfig, componentType: UIComponentType, key: string) => void;
   clearGalleryHoverPreview: () => void;
+
+  // History (Undo/Redo)
+  historyPast: Array<{
+    animationA: AnimationConfig;
+    animationB: AnimationConfig;
+    activePresetIdA: PresetId | "custom";
+    activePresetIdB: PresetId | "custom";
+    activeGalleryKeyA: string;
+    activeGalleryKeyB: string;
+    componentType: UIComponentType;
+  }>;
+  historyFuture: Array<{
+    animationA: AnimationConfig;
+    animationB: AnimationConfig;
+    activePresetIdA: PresetId | "custom";
+    activePresetIdB: PresetId | "custom";
+    activeGalleryKeyA: string;
+    activeGalleryKeyB: string;
+    componentType: UIComponentType;
+  }>;
+  historyLog: Array<{ id: string; at: number; label: string }>;
+  historyMax: number;
+  canUndo: boolean;
+  canRedo: boolean;
+  commitHistory: (label: string) => void;
+  undo: () => void;
+  redo: () => void;
+  restoreHistoryIndex: (index: number) => void;
+
+  // External import/export (share links / JSON)
+  applyImportedSetup: (payload: {
+    componentType?: UIComponentType;
+    animationA: AnimationConfig;
+    animationB: AnimationConfig;
+    codeLanguage?: CodeLanguage;
+  }) => void;
+
+  // Gallery UX: favorites + likes (local only)
+  favorites: Record<string, boolean>;
+  likes: Record<string, number>;
+  liked: Record<string, boolean>;
+  toggleFavorite: (key: string) => void;
+  toggleLike: (key: string) => void;
 };
 
 function getTargetConfig(state: State, target: CompareTarget) {
   return target === "A" ? state.animationA : state.animationB;
+}
+
+function deepClone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function captureHistorySnapshot(s: State) {
+  return {
+    animationA: deepClone(s.animationA),
+    animationB: deepClone(s.animationB),
+    activePresetIdA: s.activePresetIdA,
+    activePresetIdB: s.activePresetIdB,
+    activeGalleryKeyA: s.activeGalleryKeyA,
+    activeGalleryKeyB: s.activeGalleryKeyB,
+    componentType: s.componentType,
+  };
 }
 
 export const useAnimationStore = create<State>()(
@@ -92,10 +154,11 @@ export const useAnimationStore = create<State>()(
       compareMode: false,
       editTarget: "A",
       animationA: DEFAULT_CONFIG,
-      animationB: { ...DEFAULT_CONFIG, scale: 0.98, rotate: -3, opacity: 0.9, shadow: 0.5 },
+      animationB: { ...DEFAULT_CONFIG, scale: 0.98, rotate: -3, opacity: 0.9, shadow: 0.5, autoPeak: 0.55 },
       codeLanguage: "framer-motion",
       theme: "dark",
       componentType: "button",
+      simulateReducedMotion: false,
       activePresetIdA: "custom",
       activePresetIdB: "custom",
       activeGalleryKeyA: "none",
@@ -103,14 +166,47 @@ export const useAnimationStore = create<State>()(
       customGallery: [],
 
       galleryHover: { active: false },
+      favorites: {},
+      likes: {},
+      liked: {},
+      historyPast: [],
+      historyFuture: [],
+      historyLog: [],
+      historyMax: 30,
+      canUndo: false,
+      canRedo: false,
+
+      commitHistory: (label) => {
+        const s = get();
+        const snapshot = captureHistorySnapshot(s);
+        set((state) => {
+          const entry = { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, at: Date.now(), label };
+          const nextPast = [...state.historyPast, snapshot].slice(-state.historyMax);
+          const nextLog = [...state.historyLog, entry].slice(-state.historyMax);
+          return {
+            historyPast: nextPast,
+            historyFuture: [],
+            historyLog: nextLog,
+            canUndo: nextPast.length > 0,
+            canRedo: false,
+          };
+        });
+      },
 
       setEditTarget: (target) => set({ editTarget: target }),
       setCompareMode: (enabled) => set({ compareMode: enabled }),
       setCodeLanguage: (lang) => set({ codeLanguage: lang }),
       setTheme: (theme) => set({ theme }),
-      setComponentType: (type) => set({ componentType: type }),
+      setSimulateReducedMotion: (enabled) => set({ simulateReducedMotion: enabled }),
+      setComponentType: (type) => {
+        const s = get();
+        if (s.componentType === type) return;
+        get().commitHistory(`Component: ${type}`);
+        set({ componentType: type });
+      },
 
       setConfig: (target, patch) => {
+        get().commitHistory(`Edit ${target}`);
         const update = (cfg: AnimationConfig) => ({ ...cfg, ...patch });
         const nextActivePresetId: PresetId | "custom" = "custom";
         if (target === "A") {
@@ -121,6 +217,7 @@ export const useAnimationStore = create<State>()(
       },
 
       applyPreset: (target, presetId) => {
+        get().commitHistory(`Preset: ${presetId} (${target})`);
         const preset = getPresetById(presetId);
         if (!preset) return;
         if (target === "A") {
@@ -131,6 +228,7 @@ export const useAnimationStore = create<State>()(
       },
 
       resetTarget: (target) => {
+        get().commitHistory(`Reset ${target}`);
         if (target === "A") {
           set({ animationA: DEFAULT_CONFIG, activePresetIdA: "custom", activeGalleryKeyA: "none" });
         } else {
@@ -139,6 +237,7 @@ export const useAnimationStore = create<State>()(
       },
 
       copyAToB: () => {
+        get().commitHistory("Copy A → B");
         const s = get();
         set({
           animationB: { ...s.animationA },
@@ -147,6 +246,7 @@ export const useAnimationStore = create<State>()(
         });
       },
       copyBToA: () => {
+        get().commitHistory("Copy B → A");
         const s = get();
         set({
           animationA: { ...s.animationB },
@@ -155,6 +255,7 @@ export const useAnimationStore = create<State>()(
         });
       },
       swapAB: () => {
+        get().commitHistory("Swap A ↔ B");
         const s = get();
         set({
           animationA: { ...s.animationB },
@@ -187,6 +288,7 @@ export const useAnimationStore = create<State>()(
       loadCustomToTarget: (id, target) => {
         const item = get().customGallery.find((x) => x.id === id);
         if (!item) return;
+        get().commitHistory(`Load saved ${id} (${target})`);
         if (target === "A") {
           set({ animationA: item.config, activePresetIdA: "custom", activeGalleryKeyA: `custom:${id}`, componentType: item.componentType });
         } else {
@@ -214,6 +316,119 @@ export const useAnimationStore = create<State>()(
 
       clearGalleryHoverPreview: () => {
         set({ galleryHover: { active: false } });
+      },
+
+      toggleFavorite: (key) => {
+        set((s) => {
+          const next = { ...s.favorites, [key]: !s.favorites[key] };
+          if (!next[key]) delete next[key];
+          return { favorites: next };
+        });
+      },
+
+      toggleLike: (key) => {
+        set((s) => {
+          const alreadyLiked = !!s.liked[key];
+          const nextLiked = { ...s.liked, [key]: !alreadyLiked };
+          const prevCount = s.likes[key] ?? 0;
+          const nextCount = alreadyLiked ? Math.max(0, prevCount - 1) : prevCount + 1;
+          return {
+            liked: nextLiked,
+            likes: { ...s.likes, [key]: nextCount },
+          };
+        });
+      },
+
+      undo: () => {
+        const s = get();
+        if (s.historyPast.length === 0) return;
+        const prev = s.historyPast[s.historyPast.length - 1];
+        const currentSnap = captureHistorySnapshot(s);
+        const nextPast = s.historyPast.slice(0, -1);
+        const nextFuture = [...s.historyFuture, currentSnap];
+        const nextLog = s.historyLog.slice(0, -1);
+        set({
+          animationA: prev.animationA,
+          animationB: prev.animationB,
+          activePresetIdA: prev.activePresetIdA,
+          activePresetIdB: prev.activePresetIdB,
+          activeGalleryKeyA: prev.activeGalleryKeyA,
+          activeGalleryKeyB: prev.activeGalleryKeyB,
+          componentType: prev.componentType,
+          historyPast: nextPast,
+          historyFuture: nextFuture,
+          historyLog: nextLog,
+          canUndo: nextPast.length > 0,
+          canRedo: nextFuture.length > 0,
+        });
+      },
+
+      redo: () => {
+        const s = get();
+        if (s.historyFuture.length === 0) return;
+        const next = s.historyFuture[s.historyFuture.length - 1];
+        const currentSnap = captureHistorySnapshot(s);
+        const nextFuture = s.historyFuture.slice(0, -1);
+        const nextPast = [...s.historyPast, currentSnap].slice(-s.historyMax);
+        const entry = { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, at: Date.now(), label: "Redo" };
+        const nextLog = [...s.historyLog, entry].slice(-s.historyMax);
+        set({
+          animationA: next.animationA,
+          animationB: next.animationB,
+          activePresetIdA: next.activePresetIdA,
+          activePresetIdB: next.activePresetIdB,
+          activeGalleryKeyA: next.activeGalleryKeyA,
+          activeGalleryKeyB: next.activeGalleryKeyB,
+          componentType: next.componentType,
+          historyPast: nextPast,
+          historyFuture: nextFuture,
+          historyLog: nextLog,
+          canUndo: nextPast.length > 0,
+          canRedo: nextFuture.length > 0,
+        });
+      },
+
+      restoreHistoryIndex: (index) => {
+        const s = get();
+        const item = s.historyPast[index];
+        if (!item) return;
+        const currentSnap = captureHistorySnapshot(s);
+        const nextPast = s.historyPast.slice(0, index);
+        const nextLog = s.historyLog.slice(0, index);
+        set({
+          animationA: item.animationA,
+          animationB: item.animationB,
+          activePresetIdA: item.activePresetIdA,
+          activePresetIdB: item.activePresetIdB,
+          activeGalleryKeyA: item.activeGalleryKeyA,
+          activeGalleryKeyB: item.activeGalleryKeyB,
+          componentType: item.componentType,
+          historyPast: nextPast,
+          historyFuture: [currentSnap],
+          historyLog: nextLog,
+          canUndo: nextPast.length > 0,
+          canRedo: true,
+        });
+      },
+
+      applyImportedSetup: (payload) => {
+        if (!payload) return;
+        set((s) => ({
+          animationA: deepClone(payload.animationA),
+          animationB: deepClone(payload.animationB),
+          componentType: payload.componentType ?? s.componentType,
+          codeLanguage: payload.codeLanguage ?? s.codeLanguage,
+          activePresetIdA: "custom",
+          activePresetIdB: "custom",
+          activeGalleryKeyA: "none",
+          activeGalleryKeyB: "none",
+          historyPast: [],
+          historyFuture: [],
+          historyLog: [],
+          canUndo: false,
+          canRedo: false,
+          galleryHover: { active: false },
+        }));
       },
     }),
     {

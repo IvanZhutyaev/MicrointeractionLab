@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import type { AnimationConfig } from "../../types/animation";
 import type { UIComponentType } from "../../types/ui";
 import { easingToFramerEase, mapConfigToMotionProps, shadowToCss } from "../../features/animation/mapConfigToMotion";
+import { useAnimationStore } from "../../store/useAnimationStore";
 
 type Props = {
   config: AnimationConfig;
@@ -37,6 +38,8 @@ export function AnimatedElement({
   autoTimelineProgress,
 }: Props) {
   const reducedMotion = useReducedMotion();
+  const simulateReducedMotion = useAnimationStore((s) => s.simulateReducedMotion);
+  const effectiveReducedMotion = reducedMotion || simulateReducedMotion;
 
   const baseStyle: CSSProperties = {
     boxShadow: shadowToCss(0),
@@ -113,7 +116,7 @@ export function AnimatedElement({
   const motionProps = (() => {
     // 1) Auto timeline scrubbing.
     if (config.trigger === "auto" && typeof autoTimelineProgress === "number") {
-      const peakTime = 0.55;
+      const peakTime = Math.max(0.01, Math.min(0.99, config.autoPeak));
       const t = Math.max(0, Math.min(1, autoTimelineProgress));
 
       const bez = easingToBezierPoints(config.easing);
@@ -176,13 +179,13 @@ export function AnimatedElement({
       return {
         initial: baseState,
         animate: autoPreviewMode === "idle" ? baseState : activeState,
-        transition: reducedMotion ? { duration: 0, delay: 0 } : { duration: 0, delay: 0 },
+        transition: effectiveReducedMotion ? { duration: 0, delay: 0 } : { duration: 0, delay: 0 },
       };
     }
 
     // 4) Default behaviour: whileHover/whileTap/auto keyframes.
     const p = mapConfigToMotionProps(config);
-    if (!reducedMotion) return p;
+    if (!effectiveReducedMotion) return p;
 
     // Reduced motion: snap in a visible way.
     if (config.trigger === "auto") {

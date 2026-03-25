@@ -83,6 +83,14 @@ export function ControlsPanel() {
   const copyAToB = useAnimationStore((s) => s.copyAToB);
   const copyBToA = useAnimationStore((s) => s.copyBToA);
   const swapAB = useAnimationStore((s) => s.swapAB);
+  const undo = useAnimationStore((s) => s.undo);
+  const redo = useAnimationStore((s) => s.redo);
+  const canUndo = useAnimationStore((s) => s.canUndo);
+  const canRedo = useAnimationStore((s) => s.canRedo);
+  const historyLog = useAnimationStore((s) => s.historyLog);
+  const restoreHistoryIndex = useAnimationStore((s) => s.restoreHistoryIndex);
+  const simulateReducedMotion = useAnimationStore((s) => s.simulateReducedMotion);
+  const setSimulateReducedMotion = useAnimationStore((s) => s.setSimulateReducedMotion);
 
   const target: CompareTarget = compareMode ? editTarget : "A";
   const config: AnimationConfig = target === "A" ? animationA : animationB;
@@ -187,6 +195,67 @@ export function ControlsPanel() {
         </div>
       </Section>
 
+      <Section title="History">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            disabled={!canUndo}
+            onClick={() => undo()}
+            className="rounded-lg bg-zinc-800/40 py-2 text-[11px] font-semibold text-zinc-200 ring-1 ring-zinc-800 hover:bg-zinc-800/60 disabled:opacity-50"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            disabled={!canRedo}
+            onClick={() => redo()}
+            className="rounded-lg bg-zinc-800/40 py-2 text-[11px] font-semibold text-zinc-200 ring-1 ring-zinc-800 hover:bg-zinc-800/60 disabled:opacity-50"
+          >
+            Redo
+          </button>
+        </div>
+
+        {historyLog.length ? (
+          <div className="mt-2 space-y-1">
+            {historyLog
+              .slice(-5)
+              .reverse()
+              .map((h, i) => {
+                const idx = historyLog.length - 1 - i;
+                return (
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() => restoreHistoryIndex(idx)}
+                    className="w-full truncate rounded-lg bg-zinc-950/30 px-2 py-1 text-left text-[11px] font-semibold text-zinc-300 ring-1 ring-zinc-800 hover:bg-zinc-950/40"
+                  >
+                    {h.label}
+                  </button>
+                );
+              })}
+          </div>
+        ) : (
+          <div className="mt-2 text-[11px] text-zinc-500">No history yet</div>
+        )}
+      </Section>
+
+      <Section title="Accessibility">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-zinc-100">Reduced Motion</div>
+            <div className="text-xs text-zinc-500">Симуляция для проверки</div>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-zinc-300">
+            <span>{simulateReducedMotion ? "On" : "Off"}</span>
+            <input
+              type="checkbox"
+              checked={simulateReducedMotion}
+              onChange={(e) => setSimulateReducedMotion(e.target.checked)}
+            />
+          </label>
+        </div>
+      </Section>
+
       <Section title="Component">
         <div className="flex items-center gap-2">
           <select
@@ -203,39 +272,57 @@ export function ControlsPanel() {
 
       <Section title="Trigger">
         <div className="space-y-2">
-          <label className="flex items-center justify-between gap-3 rounded-lg bg-zinc-900/30 px-3 py-2">
-            <div className="flex items-center gap-2 text-sm text-zinc-100">
-              <input
-                type="radio"
-                name={`trigger-${target}`}
-                checked={config.trigger === "hover"}
-                onChange={() => onTriggerChange("hover")}
-              />
-              Hover
-            </div>
-          </label>
-          <label className="flex items-center justify-between gap-3 rounded-lg bg-zinc-900/30 px-3 py-2">
-            <div className="flex items-center gap-2 text-sm text-zinc-100">
-              <input
-                type="radio"
-                name={`trigger-${target}`}
-                checked={config.trigger === "click"}
-                onChange={() => onTriggerChange("click")}
-              />
-              Click
-            </div>
-          </label>
-          <label className="flex items-center justify-between gap-3 rounded-lg bg-zinc-900/30 px-3 py-2">
-            <div className="flex items-center gap-2 text-sm text-zinc-100">
-              <input
-                type="radio"
-                name={`trigger-${target}`}
-                checked={config.trigger === "auto"}
-                onChange={() => onTriggerChange("auto")}
-              />
-              Auto / Load
-            </div>
-          </label>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center justify-between gap-3 rounded-lg bg-zinc-900/30 px-3 py-2">
+              <div className="flex items-center gap-2 text-sm text-zinc-100">
+                <input
+                  type="checkbox"
+                  checked={config.trigger === "hover" || config.trigger === "hoverClick"}
+                  disabled={config.trigger === "auto"}
+                  onChange={(e) => {
+                    const nextHover = e.target.checked;
+                    const isClick = config.trigger === "click" || config.trigger === "hoverClick";
+                    if (nextHover && isClick) return onTriggerChange("hoverClick");
+                    if (nextHover) return onTriggerChange("hover");
+                    if (isClick) return onTriggerChange("click");
+                    return onTriggerChange("hover");
+                  }}
+                />
+                Hover
+              </div>
+            </label>
+
+            <label className="flex items-center justify-between gap-3 rounded-lg bg-zinc-900/30 px-3 py-2">
+              <div className="flex items-center gap-2 text-sm text-zinc-100">
+                <input
+                  type="checkbox"
+                  checked={config.trigger === "click" || config.trigger === "hoverClick"}
+                  disabled={config.trigger === "auto"}
+                  onChange={(e) => {
+                    const nextClick = e.target.checked;
+                    const isHover = config.trigger === "hover" || config.trigger === "hoverClick";
+                    if (nextClick && isHover) return onTriggerChange("hoverClick");
+                    if (nextClick) return onTriggerChange("click");
+                    if (isHover) return onTriggerChange("hover");
+                    return onTriggerChange("hover");
+                  }}
+                />
+                Click
+              </div>
+            </label>
+
+            <label className="flex items-center justify-between gap-3 rounded-lg bg-zinc-900/30 px-3 py-2">
+              <div className="flex items-center gap-2 text-sm text-zinc-100">
+                <input
+                  type="radio"
+                  name={`trigger-${target}`}
+                  checked={config.trigger === "auto"}
+                  onChange={() => onTriggerChange("auto")}
+                />
+                Auto / Load
+              </div>
+            </label>
+          </div>
         </div>
 
         {config.trigger === "auto" ? (
@@ -285,6 +372,18 @@ export function ControlsPanel() {
             onChange={(v) => setConfig(target, { delay: clamp(v, 0, 500) })}
           />
         </Field>
+
+        {config.trigger === "auto" ? (
+          <Field label="Peak at" hint={`${Math.round(config.autoPeak * 100)}%`}>
+            <Slider
+              value={config.autoPeak}
+              min={0.1}
+              max={0.9}
+              step={0.01}
+              onChange={(v) => setConfig(target, { autoPeak: v })}
+            />
+          </Field>
+        ) : null}
       </Section>
 
       <Section title="Easing">
