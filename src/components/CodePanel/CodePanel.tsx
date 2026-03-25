@@ -5,6 +5,7 @@ import { generateFramerMotionCode } from "../../utils/codegen/generateFramerMoti
 import { generateCssCode } from "../../utils/codegen/generateCssCode";
 import { copyTextToClipboard } from "../../utils/clipboard";
 import pkg from "../../../package.json";
+import { githubRequest } from "../../utils/github/githubApi";
 
 function parseGithubSlug(repoUrl: string | undefined): { owner: string; repo: string } | null {
   if (!repoUrl) return null;
@@ -26,12 +27,45 @@ export function CodePanel() {
   const target: CompareTarget = compareMode ? editTarget : "A";
   const config = target === "A" ? animationA : animationB;
 
+  const repoSlug = useMemo(() => parseGithubSlug((pkg as any)?.repository?.url), []);
+
   const code = useMemo(() => {
     if (codeLanguage === "css") return generateCssCode(config, componentType);
     return generateFramerMotionCode(config, componentType);
   }, [codeLanguage, config, componentType]);
 
   const [toast, setToast] = useState<string | null>(null);
+  const [githubToken, setGithubToken] = useState("");
+  const [githubBusy, setGithubBusy] = useState(false);
+
+  const issueTitle = `Microinteraction (${componentType}, ${config.trigger}, ${Math.round(config.duration)}ms)`;
+  const easingLabel =
+    config.easing.kind === "preset"
+      ? config.easing.preset
+      : `cubic-bezier(${config.easing.x1},${config.easing.y1},${config.easing.x2},${config.easing.y2})`;
+
+  const issueBody = [
+    `Microinteraction Lab - generated snippet`,
+    ``,
+    `Component: ${componentType}`,
+    `Trigger: ${config.trigger}`,
+    `Timing: duration=${Math.round(config.duration)}ms, delay=${Math.round(config.delay)}ms`,
+    `Easing: ${easingLabel}`,
+    `Transform: scale=${config.scale}, translateX=${Math.round(config.translateX)}px, translateY=${Math.round(config.translateY)}px, rotate=${Math.round(
+      config.rotate,
+    )}deg`,
+    `Opacity: ${config.opacity}, Shadow: ${config.shadow}`,
+    ``,
+    `Generated code (${codeLanguage}):`,
+    "```",
+    code,
+    "```",
+  ].join("\n");
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 1600);
+  };
 
   return (
     <div className="h-full w-full rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
@@ -68,6 +102,181 @@ export function CodePanel() {
         >
           Copy Code
         </button>
+
+        <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-900/30 p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-zinc-200">GitHub integration</div>
+              <div className="text-[11px] text-zinc-500">PAT введите, и создайте Gist/Issue через API</div>
+            </div>
+          </div>
+
+          <label className="block">
+            <div className="mb-1 text-[11px] text-zinc-400">Personal Access Token</div>
+            <input
+              type="password"
+              value={githubToken}
+              onChange={(e) => setGithubToken(e.target.value)}
+              placeholder="ghp_... (scope gist + repo/public_repo)"
+              className="w-full rounded-lg bg-zinc-950/40 px-3 py-2 text-xs text-zinc-100 ring-1 ring-zinc-800 placeholder:text-zinc-600"
+            />
+          </label>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={githubBusy}
+              onClick={async () => {
+                if (!repoSlug) return showToast("GitHub repo not found");
+                if (!githubToken.trim()) return showToast("Paste GitHub token first");
+                if (!code.trim()) return showToast("Nothing to share");
+
+                try {
+                  setGithubBusy(true);
+                  const trigger = config.trigger;
+                  const ext = codeLanguage === "css" ? "css" : "tsx";
+                  const filename = `microinteraction-${componentType}-${trigger}-${Date.now()}.${ext}`;
+                  const payload = {
+                    description: `Microinteraction Lab - ${componentType}/${trigger}`,
+                    public: false,
+                    files: {
+                      [filename]: {
+                        content: code,
+                      },
+                    },
+                  };
+
+                  const gist = await githubRequest<{ html_url: string }>({
+                    token: githubToken.trim(),
+                    path: "/gists",
+                    method: "POST",
+                    body: payload,
+                  });
+
+                  showToast("Gist created");
+                  window.open(gist.html_url, "_blank", "noopener,noreferrer");
+                } catch (e: any) {
+                  showToast(e?.message ?? "Failed to create Gist");
+                } finally {
+                  setGithubBusy(false);
+                }
+              }}
+              className="rounded-xl bg-indigo-500/15 px-3 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400 hover:bg-indigo-500/20 disabled:opacity-50"
+            >
+              Create Gist
+            </button>
+
+            <button
+              type="button"
+              disabled={githubBusy}
+              onClick={async () => {
+                if (!repoSlug) return showToast("GitHub repo not found");
+                if (!githubToken.trim()) return showToast("Paste GitHub token first");
+                try {
+                  setGithubBusy(true);
+                  const payload = {
+                    title: issueTitle,
+                    body: issueBody,
+                    labels: ["enhancement"],
+                  };
+
+                  const issue = await githubRequest<{ html_url: string }>({
+                    token: githubToken.trim(),
+                    path: `/repos/${repoSlug.owner}/${repoSlug.repo}/issues`,
+                    method: "POST",
+                    body: payload,
+                  });
+
+                  showToast("Issue created");
+                  window.open(issue.html_url, "_blank", "noopener,noreferrer");
+                } catch (e: any) {
+                  showToast(e?.message ?? "Failed to create Issue");
+                } finally {
+                  setGithubBusy(false);
+                }
+              }}
+              className="rounded-xl bg-zinc-900/40 px-3 py-2 text-xs font-semibold text-zinc-200 ring-1 ring-zinc-800 hover:bg-zinc-900/60 disabled:opacity-50"
+            >
+              Create Issue
+            </button>
+          </div>
+
+          <button
+            type="button"
+            disabled={githubBusy}
+            onClick={async () => {
+              if (!repoSlug) return showToast("GitHub repo not found");
+              if (!githubToken.trim()) return showToast("Paste GitHub token first");
+
+              try {
+                setGithubBusy(true);
+
+                // 1) Find default branch
+                const repo = await githubRequest<{ default_branch: string }>({
+                  token: githubToken.trim(),
+                  path: `/repos/${repoSlug.owner}/${repoSlug.repo}`,
+                  method: "GET",
+                });
+
+                const baseBranch = repo.default_branch;
+                const baseRef = await githubRequest<{ object: { sha: string } }>({
+                  token: githubToken.trim(),
+                  path: `/repos/${repoSlug.owner}/${repoSlug.repo}/git/ref/heads/${baseBranch}`,
+                  method: "GET",
+                });
+
+                // 2) Create branch
+                const branch = `microinteraction-${Date.now()}`;
+                await githubRequest({
+                  token: githubToken.trim(),
+                  path: `/repos/${repoSlug.owner}/${repoSlug.repo}/git/refs`,
+                  method: "POST",
+                  body: { ref: `refs/heads/${branch}`, sha: baseRef.object.sha },
+                });
+
+                // 3) Commit a file with generated snippet
+                const ext = codeLanguage === "css" ? "css" : "tsx";
+                const filename = `microinteraction-${componentType}-${config.trigger}-${Date.now()}.${ext}`;
+                const filePath = `microinteraction-lab/generated/${filename}`;
+
+                const b64 = window.btoa(unescape(encodeURIComponent(code)));
+                await githubRequest({
+                  token: githubToken.trim(),
+                  path: `/repos/${repoSlug.owner}/${repoSlug.repo}/contents/${filePath}`,
+                  method: "PUT",
+                  body: {
+                    message: `Add ${componentType} microinteraction snippet`,
+                    content: b64,
+                    branch,
+                  },
+                });
+
+                // 4) Create PR
+                const pr = await githubRequest<{ html_url: string }>({
+                  token: githubToken.trim(),
+                  path: `/repos/${repoSlug.owner}/${repoSlug.repo}/pulls`,
+                  method: "POST",
+                  body: {
+                    title: issueTitle,
+                    head: branch,
+                    base: baseBranch,
+                    body: issueBody,
+                  },
+                });
+
+                showToast("PR created");
+                window.open(pr.html_url, "_blank", "noopener,noreferrer");
+              } catch (e: any) {
+                showToast(e?.message ?? "Failed to create PR");
+              } finally {
+                setGithubBusy(false);
+              }
+            }}
+            className="mt-2 w-full rounded-xl bg-indigo-500/15 px-3 py-2 text-xs font-semibold text-indigo-200 ring-1 ring-indigo-400 hover:bg-indigo-500/20 disabled:opacity-50"
+          >
+            Create PR (commit + open)
+          </button>
+        </div>
 
         <button
           type="button"
